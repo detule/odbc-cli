@@ -14,8 +14,6 @@ import operator
 from collections import namedtuple, defaultdict, OrderedDict
 from prompt_toolkit.completion import Completer, Completion, PathCompleter
 from prompt_toolkit.document import Document
-#from sqleditor.completion.mssql import special
-#from sqleditor.completion.mssql.special.namedqueries import named_queries
 from .sqlcompletion import (FromClauseItem, suggest_type, Special, NamedQuery,
                                              Database, Schema, Table, Function, Column, View,
                                              Keyword, Datatype, Alias, Path, JoinCondition, Join)

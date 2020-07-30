@@ -11,7 +11,6 @@ from .parseutils.utils import (
     last_word, find_prev_keyword, parse_partial_identifier)
 from .parseutils.tables import extract_tables
 from .parseutils.ctes import isolate_query_ctes
-#from sqleditor.completion.mssql.special.main import parse_special_command
 
 try:
     string_types = basestring  # Python 2
