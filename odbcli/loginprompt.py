@@ -1,0 +1,84 @@
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.layout.dimension import Dimension as D
+from prompt_toolkit.widgets import Button, Dialog, Label
+from prompt_toolkit.widgets import TextArea
+from prompt_toolkit.layout.containers import HSplit, ConditionalContainer, WindowAlign, Window
+from prompt_toolkit.filters import is_done
+from prompt_toolkit.application import get_app
+from cyanodbc import ConnectError, DatabaseError, SQLGetInfo
+from .conn import connWrappers
+from .filters import ShowLoginPrompt
+
+def login_prompt(my_app: "sqlApp", main_win: Window):
+
+    def ok_handler() -> None:
+        get_app().layout.focus(uidTextfield)
+        obj = my_app.obj_list[0].selected_object
+        try:
+            obj.conn.connect(username = uidTextfield.text, password = pwdTextfield.text)
+            # Query the type of back-end and instantiate an appropriate class
+            dbms = obj.conn.get_info(SQLGetInfo.SQL_DBMS_NAME)
+            # Now clone object
+            newConn = connWrappers[dbms](
+                    dsn = obj.conn.dsn,
+                    conn = obj.conn.conn,
+                    username = obj.conn.username,
+                    password = obj.conn.password)
+            obj.conn.close()
+            newConn.connect(start_executor = True)
+            obj.conn = newConn
+            my_app.active_conn = obj.conn
+            # OG some thread locking may be needed here
+            my_app.completer.reset_completions()
+            obj.expand()
+        except ConnectError as e:
+            msgLabel.text = "Connect failed"
+        else:
+            msgLabel.text = ""
+            my_app.show_login_prompt = False
+            get_app().layout.focus(main_win)
+
+        uidTextfield.text = ""
+        pwdTextfield.text = ""
+
+    def cancel_handler() -> None:
+        msgLabel.text = ""
+        my_app.show_login_prompt = False
+        get_app().layout.focus(main_win)
+
+    def accept(buf: Buffer) -> bool:
+        get_app().layout.focus(ok_button)
+        return True
+
+    ok_button = Button(text="OK", handler=ok_handler)
+    cancel_button = Button(text="Cancel", handler=cancel_handler)
+
+    pwdTextfield = TextArea(
+        multiline=False, password=True, accept_handler=accept
+    )
+    uidTextfield = TextArea(
+        multiline=False, password=False, accept_handler=accept
+    )
+    msgLabel = Label(text = "", dont_extend_height = True, style = "class:frame.label")
+    msgLabel.window.align = WindowAlign.CENTER
+    dialog = Dialog(
+            title="Server Credentials",
+            body=HSplit(
+                [
+                    Label(text="Username ", dont_extend_height=True),
+                    uidTextfield,
+                    Label(text="Password", dont_extend_height=True),
+                    pwdTextfield,
+                    msgLabel
+                ],
+                padding=D(preferred=1, max=1),
+        ),
+        buttons=[ok_button, cancel_button],
+        with_background = False
+    )
+
+    return ConditionalContainer(
+            content = dialog,
+            filter = ShowLoginPrompt(my_app) & ~is_done
+    )
+
