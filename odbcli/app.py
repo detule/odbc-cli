@@ -21,8 +21,10 @@ class sqlApp:
         self.table_format = c["main"]["table_format"]
         self.syntax_style = c["main"]["syntax_style"]
         self.cli_style = c["colors"]
-
         self.multiline: bool = c["main"].as_bool("multi_line")
+        # Hack here, will be better once we we bring _create_application
+        self.editing_mode_initial = EditingMode.VI if c["main"].as_bool("vi") else EditingMode.EMACS
+
         self.show_sidebar: bool = False
         self.show_login_prompt: bool = False
         self.show_preview: bool = False

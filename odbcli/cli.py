@@ -98,6 +98,7 @@ def main():
         include_default_pygments_style = False,
         mouse_support = True,
         full_screen = False,
+        editing_mode = my_app.editing_mode_initial
     )
 
 #    with patch_stdout():
