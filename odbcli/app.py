@@ -24,6 +24,7 @@ class sqlApp:
         self.multiline: bool = c["main"].as_bool("multi_line")
         # Hack here, will be better once we we bring _create_application
         self.editing_mode_initial = EditingMode.VI if c["main"].as_bool("vi") else EditingMode.EMACS
+        self.min_num_menu_lines = c["main"].as_int("min_num_menu_lines")
 
         self.show_sidebar: bool = False
         self.show_login_prompt: bool = False

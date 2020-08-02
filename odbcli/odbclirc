@@ -48,7 +48,7 @@ syntax_style = default
 vi = False
 
 # Number of lines to reserve for the suggestion menu
-min_num_menu_lines = 4
+min_num_menu_lines = 5
 
 # Custom colors for the completion menu, toolbar, etc.
 [colors]
