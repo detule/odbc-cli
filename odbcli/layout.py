@@ -15,13 +15,16 @@ from prompt_toolkit.formatted_text import StyleAndTextTuples, to_formatted_text
 from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.application import get_app
 from prompt_toolkit.mouse_events import MouseEvent
+from prompt_toolkit.lexers import PygmentsLexer
+from pygments.lexers.sql import SqlLexer
 from os.path import expanduser
 from .sidebar import sql_sidebar, sql_sidebar_help, show_sidebar_button_info, sql_sidebar_navigation
 from .loginprompt import login_prompt
 from .preview import preview_element
 from .filters import ShowLoginPrompt, ShowSidebar, MultilineFilter
-from .utils import if_mousedown, config_location, ensure_dir_exists
+from .utils import if_mousedown
 from .conn import connStatus
+from .config import config_location, ensure_dir_exists
 
 def get_inputmode_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
     """
@@ -164,7 +167,8 @@ class sqlAppLayout:
 
         self.my_app = my_app
         self.search_field = SearchToolbar()
-        history_file = ensure_dir_exists(config_location()) + 'history'
+        history_file = config_location() + 'history'
+        ensure_dir_exists(history_file)
         hist = FileHistory(expanduser(history_file))
         self.input_buffer = Buffer(
                 name = "defaultbuffer",
@@ -180,6 +184,7 @@ class sqlAppLayout:
             )
         main_win_control = BufferControl(
                 buffer = self.input_buffer,
+                lexer = PygmentsLexer(SqlLexer),
                 search_buffer_control = self.search_field.control,
                 include_default_input_processors = False,
                 preview_search = True

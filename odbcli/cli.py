@@ -19,10 +19,9 @@ from .app import sqlApp
 from .layout import sqlAppLayout
 from .conn import connStatus
 from .executor import cmsg, commandStatus
-os.environ["LESS"] = "-SRXF"
+from .odbcstyle import style_factory
 
-dsns = datasources()
-my_app = sqlApp(dsns = list(dsns.keys()))
+my_app = sqlApp()
 
 def main():
     sql_layout = sqlAppLayout(my_app = my_app)
@@ -90,51 +89,13 @@ def main():
         if obj is not None:
             obj.collapse()
 
-    # Style.
-    style = Style(
-        [
-            ("preview-output-field", "bg:#000044 #ffffff"),
-            ("preview-input-field", "bg:#000066 #ffffff"),
-            ("preview-divider-line", "#000000"),
-            ("completion-menu.completion.current", 'bg:#ffffff #000000'),
-            ("completion-menu.completion", 'bg:#008888 #ffffff'),
-            ("completion-menu.meta.completion.current", 'bg:#44aaaa #000000'),
-            ("completion-menu.meta.completion", 'bg:#448888 #ffffff'),
-            ("completion-menu.multi-column-meta", 'bg:#aaffff #000000'),
-            ("status-toolbar", "bg:#222222 #aaaaaa"),
-            ("status-toolbar.title", "underline"),
-            ("status-toolbar.inputmode", "bg:#222222 #ffffaa"),
-            ("status-toolbar.key", "bg:#000000 #888888"),
-            ("status-toolbar.pastemodeon", "bg:#aa4444 #ffffff"),
-            ("status-toolbar.pythonversion", "bg:#222222 #ffffff bold"),
-            ("status-toolbar paste-mode-on", "bg:#aa4444 #ffffff"),
-            ("record", "bg:#884444 white"),
-            ("status-toolbar.input-mode", "#ffff44"),
-            ("status-toolbar.conn-executing", "bg:red #ffff44"),
-            ("status-toolbar.conn-fetching", "bg:yellow black"),
-            ("status-toolbar.conn-idle", "bg:#668866 #ffffff"),
-    # The options sidebar.
-            ("sidebar", "bg:#bbbbbb #000000"),
-            ("sidebar.title", "bg:#668866 fg:#ffffff"),
-            ("sidebar.label", "bg:#bbbbbb fg:#222222"),
-            ("sidebar.status", "bg:#dddddd #000011"),
-            ("sidebar.label selected", "bg:#222222 #eeeeee bold"),
-            ("sidebar.status selected", "bg:#444444 #ffffff bold"),
-            ("sidebar.label active", "bg:#668866 #ffffff"),
-            ("sidebar.status active", "bg:#88AA88 #ffffff"),
-            ("sidebar.separator", "underline"),
-            ("sidebar.key", "bg:#bbddbb #000000 bold"),
-            ("sidebar.key.description", "bg:#bbbbbb #000000"),
-            ("sidebar.helptext", "bg:#fdf6e3 #000011"),
-        ]
-    )
-
     # Run application.
     application = Application(
         layout = sql_layout.layout,
         key_bindings = kb,
         enable_page_navigation_bindings = True,
-        style = style,
+        style = style_factory(my_app.syntax_style, my_app.cli_style),
+        include_default_pygments_style = False,
         mouse_support = True,
         full_screen = False,
     )
@@ -156,7 +117,7 @@ def main():
                     sqlConn.status = connStatus.IDLE
                     if res.status == commandStatus.OKWRESULTS:
                         ht = application.output.get_size()[0]
-                        formatted = sqlConn.formatted_fetch(ht - 4)
+                        formatted = sqlConn.formatted_fetch(ht - 4, my_app.table_format)
                         sqlConn.status = connStatus.FETCHING
                     else:
                         formatted = "No rows returned\n"

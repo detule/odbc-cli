@@ -14,21 +14,6 @@ __all__ = [
     "document_is_multiline_python",
 ]
 
-def ensure_dir_exists(path):
-    parent_dir = os.path.expanduser(os.path.dirname(path))
-    if not os.path.exists(parent_dir):
-        os.makedirs(parent_dir)
-    return path
-
-def config_location():
-    if system() == 'Windows':
-        return os.getenv('LOCALAPPDATA') + '\\dbcli\\odbccli\\'
-
-    if 'XDG_CONFIG_HOME' in os.environ:
-        return '%s/odbccli/' % os.path.expanduser(os.environ['XDG_CONFIG_HOME'])
-
-    return os.path.expanduser('~/.config/odbccli/')
-
 def has_unclosed_brackets(text: str) -> bool:
     """
     Starting at the end of the string. If we find an opening bracket
