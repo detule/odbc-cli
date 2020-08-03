@@ -7,7 +7,6 @@ from prompt_toolkit.layout.dimension import Dimension as D
 from prompt_toolkit.widgets import Button, TextArea, SearchToolbar, Box, Shadow, Frame
 from prompt_toolkit.layout.containers import Window, VSplit, HSplit, ConditionalContainer
 from prompt_toolkit.filters import is_done
-from prompt_toolkit.application import get_app
 from cyanodbc import ConnectError, DatabaseError
 from cli_helpers.tabular_output import TabularOutputFormatter
 from .filters import ShowPreview
@@ -116,8 +115,8 @@ def preview_element(my_app: "sqlApp", main_win: Window):
             text = help_text, cursor_position = 0
         ), True)
         my_app.show_preview = False
-        get_app().layout.focus(input_buffer)
-        get_app().layout.focus(main_win)
+        my_app.application.layout.focus(input_buffer)
+        my_app.application.layout.focus(main_win)
         return None
 
     cancel_button = Button(text = "Done", handler = cancel_handler)
@@ -137,19 +136,19 @@ def preview_element(my_app: "sqlApp", main_win: Window):
                 search_field,
                 ]
             )
+
     frame = Shadow(
             body = Frame(
                 title = "Table Preview",
                 body = container,
                 style="class:dialog.body",
-                width = D(preferred = 80, min = 30),
+                width = D(preferred = 180, min = 30),
                 modal = True
             )
     )
 
 
     return ConditionalContainer(
-#            content = container,
             content = frame,
             filter = ShowPreview(my_app) & ~is_done
     )
