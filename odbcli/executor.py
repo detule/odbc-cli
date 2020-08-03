@@ -15,6 +15,8 @@ from logging import (
 
 from collections import namedtuple
 from os.path import expanduser
+from os import getpid
+from .config import config_location
 
 cmsg = namedtuple('cmsg', ['type', 'payload', 'status'])
 
@@ -23,28 +25,18 @@ class commandStatus(Enum):
     FAIL = 1
     OKWRESULTS = 2
 
-def initiate_logging(log_file):
-    log_level = "DEBUG"
+def initiate_logging(log_level = INFO):
 
+    log_file = config_location() + "executor_" + str(getpid()) + ".log"
     # Disable logging if value is NONE by switching to a no-op handler.
     # Set log level to a high value so it doesn't even waste cycles getting
     # called.
-    if log_level.upper() == 'NONE':
+    if log_level == CRITICAL:
         handler = NullHandler()
     else:
         # creates a log buffer with max size of 20 MB and 5 backup files
         handler = RotatingFileHandler(expanduser(log_file),
                 encoding='utf-8', maxBytes=1024*1024*20, backupCount=5)
-
-    level_map = {'CRITICAL': CRITICAL,
-                 'ERROR': ERROR,
-                 'WARNING': WARNING,
-                 'INFO': INFO,
-                 'DEBUG': DEBUG,
-                 'NONE': CRITICAL
-                }
-
-    log_level = level_map[log_level.upper()]
 
     lformatter = Formatter(
         '%(asctime)s (%(process)d/%(threadName)s) '
@@ -52,27 +44,27 @@ def initiate_logging(log_file):
 
     handler.setFormatter(lformatter)
 
-    root_logger = getLogger('sqlApp')
+    root_logger = getLogger('executor')
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level)
 
-    root_logger.info('Initializing sqlApp logging.')
+    root_logger.info('Initializing executor process')
     root_logger.debug('Log file %r.', log_file)
     return root_logger
 
-def executor_process(chan):
+def executor_process(chan, log_level = INFO):
     conn = Connection()
     crsr = Cursor(conn)
 
-    root_logger = initiate_logging("/home/oliver/project/multiprocess.log")
+    my_logger = initiate_logging(log_level)
     while True:
-        root_logger.debug("Waiting for message")
+        my_logger.debug("Waiting for message")
         try:
             # Parent process handles KeyboardInterrupts
             msg = chan.recv()
         except KeyboardInterrupt:
             continue
-        root_logger.debug("Message received %s", msg.type)
+        my_logger.debug("Message received %s", msg.type)
         status = commandStatus.OK
         response = ""
         if msg.type == "connect":
@@ -97,7 +89,6 @@ def executor_process(chan):
             except DatabaseError as e:
                 status = commandStatus.FAIL
                 response = str(e)
-            root_logger.debug("Sending execute back %s", response)
         elif msg.type == "fetch":
             #TODO: Check to make sure we connected
             try:
@@ -134,4 +125,5 @@ def executor_process(chan):
             status = commandStatus.FAIL
             response = "Unknown command"
 
+        my_logger.debug("Sending message back %d", status)
         chan.send(cmsg(msg.type, response, status))

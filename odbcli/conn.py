@@ -4,6 +4,7 @@ from typing import Optional
 from functools import partial
 from cli_helpers.tabular_output import TabularOutputFormatter
 from multiprocessing import Process, Pipe
+from logging import getLogger
 from .executor import executor_process, cmsg, commandStatus
 
 formatter = TabularOutputFormatter()
@@ -33,6 +34,7 @@ class sqlConnection:
         self.status = connStatus.DISCONNECTED
         self.executor: Process = None
         self.parent_chan, self.child_chan = Pipe()
+        self.logger = getLogger(__name__)
 
     def connect(
             self,
@@ -55,22 +57,27 @@ class sqlConnection:
         if start_executor:
             self.executor = Process(
                     target = executor_process,
-                    args=(self.child_chan,))
+                    args=(self.child_chan, self.logger.getEffectiveLevel(),))
             self.executor.start()
+            self.logger.info("Started executor process: %d", self.executor.pid)
             self.parent_chan.send(cmsg("connect", conn_str, None))
             resp = self.parent_chan.recv()
             # How do you handle failure here?
             if not resp.status == commandStatus.OK:
+                self.logger.error("Error atempting to connect in executor process")
                 self.executor.terminate()
                 self.executor.join()
                 raise ConnectError("Connection failure in executor")
 
     def async_execute(self, query) -> cmsg:
         if self.executor and self.executor.is_alive():
+            self.logger.debug("Sending query %s to pid %d",
+                    query, self.executor.pid)
             self.parent_chan.send(
                     cmsg("execute", query, None))
             # Will block but can be interrupted
             res = self.parent_chan.recv()
+            self.logger.debug("Execution done")
             self.query = query
             # Check if catalog has changed in which case
             # execute query locally
@@ -84,6 +91,7 @@ class sqlConnection:
             elif not rescat.payload == self.current_catalog():
                 # query changed the catalog
                 # so let's change the database locally
+                self.logger.debug("Execution changed catalog")
                 self.execute("USE " + rescat.payload)
         else:
             res = cmsg("execute", "", commandStatus.FAIL)
@@ -91,8 +99,11 @@ class sqlConnection:
 
     def async_fetch(self, size) -> cmsg:
         if self.executor and self.executor.is_alive():
+            self.logger.debug("Fetching size %d from pid %d",
+                    size, self.executor.pid)
             self.parent_chan.send(cmsg("fetch", size, None))
             res = self.parent_chan.recv()
+            self.logger.debug("Fetching done")
         else:
             res = cmsg("fetch", "", commandStatus.FAIL)
         return res

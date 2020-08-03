@@ -24,8 +24,6 @@ from .mssqlliterals.main import get_literals
 from .prioritization import PrevalenceCounter
 # from mssqlcli.util import decode
 
-_logger = logging.getLogger('mssqlcli.mssqlcompleter')
-
 Match = namedtuple('Match', ['completion', 'priority'])
 
 _SchemaObject = namedtuple('SchemaObject', 'name catalog schema meta')
@@ -130,7 +128,7 @@ class MssqlCompleter(Completer):
         # initialize attributes to be set later
         self._arg_list_cache = None
         self.special_commands = None
-        self.logger = logging.getLogger(u'sqlApp.completer')
+        self.logger = logging.getLogger(__name__)
         self.logger.debug("Completer instantiated")
 
     def escape_name(self, name):
@@ -210,7 +208,7 @@ class MssqlCompleter(Completer):
             try:
                 metadata[catalog][schema][relname] = OrderedDict()
             except KeyError:
-                _logger.error('%r %r listed in unrecognized schema %r',
+                self.logger.error('%r %r listed in unrecognized schema %r',
                               kind, relname, schema)
 
             # OG: Unclear what the roll of all_completions is
