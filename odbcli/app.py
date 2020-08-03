@@ -2,13 +2,18 @@ import logging
 import os
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 from prompt_toolkit.enums import EditingMode
-from prompt_toolkit.application import get_app
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.application import Application
+from prompt_toolkit.key_binding.bindings.focus import focus_next
+from prompt_toolkit.filters import Condition
 from logging.handlers import RotatingFileHandler
 from cyanodbc import datasources
 from .sidebar import myDBConn
 from .conn import sqlConnection
 from .completion.mssqlcompleter import MssqlCompleter
 from .config import get_config, config_location, ensure_dir_exists
+from .odbcstyle import style_factory
+from .layout import sqlAppLayout
 
 class sqlApp:
     def __init__(
@@ -22,8 +27,6 @@ class sqlApp:
         self.syntax_style = c["main"]["syntax_style"]
         self.cli_style = c["colors"]
         self.multiline: bool = c["main"].as_bool("multi_line")
-        # Hack here, will be better once we we bring _create_application
-        self.editing_mode_initial = EditingMode.VI if c["main"].as_bool("vi") else EditingMode.EMACS
         self.min_num_menu_lines = c["main"].as_int("min_num_menu_lines")
 
         self.show_sidebar: bool = False
@@ -42,13 +45,15 @@ class sqlApp:
         self.obj_list[0].select_next()
         self.completer = MssqlCompleter(smart_completion=True, my_app = self)
 
+        self.application = self._create_application()
+
     @property
     def editing_mode(self) -> EditingMode:
-        return get_app().editing_mode
+        return self.application.editing_mode
 
     @editing_mode.setter
     def editing_mode(self, value: EditingMode) -> None:
-        app = get_app()
+        app = self.application
         app.editing_mode = value
 
     @property
@@ -127,3 +132,79 @@ class sqlApp:
         root_logger.info('Initializing odbcli logging.')
         root_logger.debug('Log file %r.', log_file)
         self.logger = logging.getLogger(__name__)
+
+    def _create_application(self) -> Application:
+        self.sql_layout = sqlAppLayout(my_app = self)
+        kb = KeyBindings()
+        @kb.add("c-q")
+        def _(event):
+            " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
+            event.app.exit(exception = EOFError, style="class:exiting")
+        # Global key bindings.
+        kb.add("tab")(focus_next)
+        @kb.add("c-f")
+        def _(event):
+            " Toggle between Emacs and Vi mode. "
+            self.vi_mode = not self.vi_mode
+        # apparently ctrls does this
+        @kb.add("c-t")
+        def _(event):
+            """
+            Show/hide sidebar.
+            """
+            self.show_sidebar = not self.show_sidebar
+        sidebar_visible = Condition(lambda: self.show_sidebar and not self.show_login_prompt and not self.show_preview)
+        @kb.add("up", filter=sidebar_visible)
+        @kb.add("c-p", filter=sidebar_visible)
+        @kb.add("k", filter=sidebar_visible)
+        def _(event):
+            " Go to previous option. "
+            self.obj_list[0].select_previous()
+
+        @kb.add("down", filter=sidebar_visible)
+        @kb.add("c-n", filter=sidebar_visible)
+        @kb.add("j", filter=sidebar_visible)
+        def _(event):
+            " Go to next option. "
+            self.obj_list[0].select_next()
+
+        @kb.add("enter", filter=sidebar_visible)
+        def _(event):
+            " If connection, connect.  If table preview"
+            obj = self.obj_list[0].selected_object
+            if type(obj).__name__ == "myDBConn" and not obj.conn.connected():
+                self.show_login_prompt = True
+                event.app.layout.focus(self.sql_layout.lprompt)
+            if type(obj).__name__ == "myDBConn" and obj.conn.connected():
+                # OG: some thread locking may be needed here
+                self.completer.reset_completions()
+                self.active_conn = obj.conn
+            elif type(obj).__name__ == "myDBTable":
+                self.show_preview = True
+                event.app.layout.focus(self.sql_layout.preview)
+
+        @kb.add("right", filter=sidebar_visible)
+        @kb.add("l", filter=sidebar_visible)
+        @kb.add(" ", filter=sidebar_visible)
+        def _(event):
+            " Select next value for current option. "
+            self.obj_list[0].selected_object.expand()
+
+        @kb.add("left", filter=sidebar_visible)
+        @kb.add("h", filter=sidebar_visible)
+        def _(event):
+            " Select next value for current option. "
+            obj = self.obj_list[0].selected_object
+            if obj is not None:
+                obj.collapse()
+
+        return Application(
+            layout = self.sql_layout.layout,
+            key_bindings = kb,
+            enable_page_navigation_bindings = True,
+            style = style_factory(self.syntax_style, self.cli_style),
+            include_default_pygments_style = False,
+            mouse_support = True,
+            full_screen = False,
+            editing_mode = EditingMode.VI if self.config["main"].as_bool("vi") else EditingMode.EMACS
+        )

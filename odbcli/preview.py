@@ -12,9 +12,8 @@ from cyanodbc import ConnectError, DatabaseError
 from cli_helpers.tabular_output import TabularOutputFormatter
 from .filters import ShowPreview
 from .conn import connWrappers, connStatus
-from .app import sqlApp
 
-def preview_element(my_app: sqlApp, main_win: Window):
+def preview_element(my_app: "sqlApp", main_win: Window):
     help_text = """
     Press Enter in the input box to page through the table.
     Alternatively, enter a filtering SQL statement and then press Enter
