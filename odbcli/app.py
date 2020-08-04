@@ -2,7 +2,8 @@ import logging
 import os
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 from prompt_toolkit.enums import EditingMode
-from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
+from prompt_toolkit.key_binding.bindings.auto_suggest import load_auto_suggest_bindings
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding.bindings.focus import focus_next
 from prompt_toolkit.filters import Condition
@@ -198,9 +199,11 @@ class sqlApp:
             if obj is not None:
                 obj.collapse()
 
+        auto_suggest_bindings = load_auto_suggest_bindings()
+
         return Application(
             layout = self.sql_layout.layout,
-            key_bindings = kb,
+            key_bindings = merge_key_bindings([kb, auto_suggest_bindings]),
             enable_page_navigation_bindings = True,
             style = style_factory(self.syntax_style, self.cli_style),
             include_default_pygments_style = False,

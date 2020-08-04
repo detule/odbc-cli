@@ -1,4 +1,5 @@
 from functools import partial
+from prompt_toolkit.layout.processors import AppendAutoSuggestion
 from prompt_toolkit.key_binding.vi_state import InputMode
 from prompt_toolkit.layout.containers import VSplit, HSplit, Window, ConditionalContainer, FloatContainer, Container, Float, ScrollOffsets
 from prompt_toolkit.buffer import Buffer
@@ -7,8 +8,8 @@ from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition, has_focus, is_done, renderer_height_is_known
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.completion import DynamicCompleter, ThreadedCompleter
-from prompt_toolkit.history import History, InMemoryHistory, FileHistory
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.history import History, InMemoryHistory, FileHistory, ThreadedHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory, ThreadedAutoSuggest
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.widgets import SearchToolbar
 from prompt_toolkit.formatted_text import StyleAndTextTuples, to_formatted_text
@@ -169,7 +170,7 @@ class sqlAppLayout:
         self.search_field = SearchToolbar()
         history_file = config_location() + 'history'
         ensure_dir_exists(history_file)
-        hist = FileHistory(expanduser(history_file))
+        hist = ThreadedHistory(FileHistory(expanduser(history_file)))
         self.input_buffer = Buffer(
                 name = "defaultbuffer",
                 tempfile_suffix = ".py",
@@ -177,7 +178,7 @@ class sqlAppLayout:
                 history = hist,
                 completer = ThreadedCompleter(
                     DynamicCompleter(lambda: self.my_app.completer)),
-                auto_suggest = AutoSuggestFromHistory(),
+                auto_suggest = ThreadedAutoSuggest(AutoSuggestFromHistory()),
                 complete_while_typing = Condition(
                     lambda: self.my_app.active_conn is not None
                 )
@@ -187,6 +188,7 @@ class sqlAppLayout:
                 lexer = PygmentsLexer(SqlLexer),
                 search_buffer_control = self.search_field.control,
                 include_default_input_processors = False,
+                input_processors = [AppendAutoSuggestion()],
                 preview_search = True
                 )
 
