@@ -21,8 +21,7 @@ class sqlConnection:
         dsn: str,
         conn: Optional[Connection] = Connection(),
         username: Optional[str] = "",
-        password: Optional[str] = "",
-        quotechar: Optional[str] = '"'
+        password: Optional[str] = ""
     ) -> None:
         self.dsn = dsn
         self.conn = conn
@@ -30,11 +29,18 @@ class sqlConnection:
         self.query: str = None
         self.username = username
         self.password = password
-        self.quotechar = quotechar
         self.status = connStatus.DISCONNECTED
         self.executor: Process = None
         self.parent_chan, self.child_chan = Pipe()
         self.logger = getLogger(__name__)
+        self._quotechar = None
+
+    @property
+    def quotechar(self) -> str:
+        if self._quotechar is None:
+            self._quotechar = self.conn.get_info(
+                    SQLGetInfo.SQL_IDENTIFIER_QUOTE_CHAR)
+        return self._quotechar
 
     def connect(
             self,
@@ -201,15 +207,6 @@ class sqlConnection:
 
 connWrappers = {}
 
-def mysqlInit(
-        self,
-        dsn: str,
-        conn: Optional[Connection] = Connection(),
-        username: Optional[str] = "",
-        password: Optional[str] = "",
-        quotechar: Optional[str] = "`") -> None:
-    sqlConnection.__init__(self = self, dsn = dsn, conn = conn, username = username, password = password, quotechar = quotechar)
-
 def mssql_preview_query(self, table, filter_query = "", limit = 1000) -> str:
     qry = " * FROM " + table + " " + filter_query
     if limit > 0:
@@ -219,33 +216,14 @@ def mssql_preview_query(self, table, filter_query = "", limit = 1000) -> str:
     return qry
 
 connWrappers["MySQL"] = type("MySQL", (sqlConnection,), {
-    "__init__": mysqlInit,
     "find_tables": lambda self, catalog, schema, table, type:
     self.conn.find_tables(catalog = schema, schema = "", table = table, type = type),
     "find_columns": lambda self, catalog, schema, table, column:
     self.conn.find_columns(catalog = schema, schema = "", table = table, column = column)
     })
+
 connWrappers["Microsoft SQL Server"] = type(
         "Microsoft SQL Server", (sqlConnection,), {
             "preview_query": mssql_preview_query
         })
 connWrappers["SQLite"] = type("SQLite", (sqlConnection,), {})
-# To do , wrap execute as well
-# https://stackoverflow.com/questions/15247075/how-can-i-dynamically-create-derived-classes-from-a-base-class
-# https://stackoverflow.com/questions/4821104/dynamic-instantiation-from-string-name-of-a-class-in-dynamically-imported-module
-# Microsoft SQL Server
-# MySQL
-# SQLite
-#type("MySQL", (sqlConnection,), {
-#    "find_table": lambda self, catalog, schema, table, type:
-#    return self.conn.find_tables(catalog = schema, schema = "", table = table, type = type)
-#    }
-#res = {"out":[]}
-#async def test_example(r):
-#    cs = sqlConnection(dsn = "MSSQL_freetds")
-#    cs.connect(username = "sa", password = "Yukon900")
-#    crsr = cs.execute("SELECT * FROM AdventureWorks2017.Person.Address")
-#    r["out"] = await crsr.fetchmany(1000)
-
-#loop = get_event_loop()
-#loop.run_until_complete(test_example(res))
