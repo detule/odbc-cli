@@ -1,5 +1,5 @@
 import logging
-from enum import Enum
+from enum import IntEnum
 from cyanodbc import Connection, Cursor, connect, DatabaseError
 from logging.handlers import RotatingFileHandler
 from logging import (
@@ -20,7 +20,7 @@ from .config import config_location
 
 cmsg = namedtuple('cmsg', ['type', 'payload', 'status'])
 
-class commandStatus(Enum):
+class commandStatus(IntEnum):
     OK = 0
     FAIL = 1
     OKWRESULTS = 2
@@ -125,5 +125,5 @@ def executor_process(chan, log_level = INFO):
             status = commandStatus.FAIL
             response = "Unknown command"
 
-        my_logger.debug("Sending message back %d", status)
+        my_logger.debug("Sending message back %d", int(status))
         chan.send(cmsg(msg.type, response, status))
