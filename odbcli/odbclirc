@@ -27,6 +27,13 @@ log_level = INFO
 # By default 'PAGER' environment variable is used
 # pager = less -SRXF
 
+# Number of lines to rserve for pager non-content output
+# When table format is psql, for less this is 1, pypager 2.  Internally we use
+# this number to fetch just enough rows of data so that we can fit the table
+# columns at the top of each page - therefore this number also depends on the
+# format used
+pager_reserve_lines = 1
+
 # Timing of sql statements and table rendering.
 timing = True
 

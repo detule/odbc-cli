@@ -90,7 +90,7 @@ def preview_element(my_app: "sqlApp", main_win: Window):
             if len(resf.payload[0]):
                 conn_preview.status = connStatus.FETCHING
                 output = formatter.format_output(
-                        resf.payload[1], resf.payload[0], format_name = my_app.table_format)
+                        resf.payload[1], resf.payload[0], format_name = "psql")
                 output = "\n".join(output)
             else:
                 conn_preview.status = connStatus.IDLE

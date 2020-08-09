@@ -49,7 +49,7 @@ def get_inputmode_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
     if False:
         result.extend(to_formatted_text(my_app.title))
 
-    append((input_mode_t, "[c-f] ", toggle_vi_mode))
+    append((input_mode_t, "[C-f] ", toggle_vi_mode))
 
     # InputMode
     if my_app.vi_mode:
@@ -85,6 +85,8 @@ def get_inputmode_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
 
         append((input_mode_t, "Emacs", toggle_vi_mode))
         append((token, " "))
+
+    append((input_mode_t, "[C-q] Exit Client", ))
 
     return result
 

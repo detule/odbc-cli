@@ -35,7 +35,7 @@ def main():
                     sqlConn.status = connStatus.IDLE
                     if res.status == commandStatus.OKWRESULTS:
                         ht = my_app.application.output.get_size()[0]
-                        formatted = sqlConn.formatted_fetch(ht - 4, my_app.table_format)
+                        formatted = sqlConn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, my_app.table_format)
                         sqlConn.status = connStatus.FETCHING
                     else:
                         formatted = "No rows returned\n"

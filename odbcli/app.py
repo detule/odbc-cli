@@ -24,6 +24,7 @@ class sqlApp:
         c = self.config = get_config(odbclirc_file)
         self.initialize_logging()
         self.set_default_pager(c)
+        self.pager_reserve_lines = c["main"].as_int("pager_reserve_lines")
         self.table_format = c["main"]["table_format"]
         self.syntax_style = c["main"]["syntax_style"]
         self.cli_style = c["colors"]
