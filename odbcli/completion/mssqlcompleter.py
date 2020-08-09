@@ -745,13 +745,9 @@ class MssqlCompleter(Completer):
             for metadata in self.dbmetadata.values():
                 metadata[catalog_e] = {}
                 for schema_e in schema_names_e:
-                    self.logger.debug("get_schema_matches: Populating metadata %s.%s", catalog_e, schema_e)
+                    self.logger.debug("get_schema_matches: Creating dict %s.%s", catalog_e, schema_e)
                     metadata[catalog_e][schema_e] = {}
 
-            # Now store these somewhere
-    #        schema_names = self.dbmetadata['tables'].keys()
-    #        if suggestion.quoted:
-    #            schema_names = [self.escape_schema(s) for s in schema_names]
         return self.find_matches(
             word_before_cursor, schema_names_e, meta='schema')
 
