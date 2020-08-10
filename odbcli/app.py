@@ -26,6 +26,7 @@ class sqlApp:
         self.set_default_pager(c)
         self.pager_reserve_lines = c["main"].as_int("pager_reserve_lines")
         self.table_format = c["main"]["table_format"]
+        self.timing_enabled = c["main"].as_bool("timing")
         self.syntax_style = c["main"]["syntax_style"]
         self.cli_style = c["colors"]
         self.multiline: bool = c["main"].as_bool("multi_line")

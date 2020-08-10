@@ -5,6 +5,7 @@ This could be used as inspiration for a REPL.
 """
 import os
 from sys import stderr
+from time import time
 from cyanodbc import DatabaseError, datasources
 from click import echo_via_pager, secho
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -31,7 +32,9 @@ def main():
             if sqlConn is not None:
                 #TODO also check that it is connected
                 try:
+                    start = time()
                     res = sqlConn.async_execute(my_app.sql_layout.input_buffer.text)
+                    execution = time() - start
                     sqlConn.status = connStatus.IDLE
                     if res.status == commandStatus.OKWRESULTS:
                         ht = my_app.application.output.get_size()[0]
@@ -39,6 +42,8 @@ def main():
                         sqlConn.status = connStatus.FETCHING
                     else:
                         formatted = "No rows returned\n"
+                    if my_app.timing_enabled:
+                        print("Time: %0.03fs" % execution)
                     echo_via_pager(formatted)
                 except BrokenPipeError:
                     my_app.logger.debug('BrokenPipeError caught. Recovering...', file = stderr)

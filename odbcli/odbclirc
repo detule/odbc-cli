@@ -34,7 +34,7 @@ log_level = INFO
 # format used
 pager_reserve_lines = 1
 
-# Timing of sql statements and table rendering.
+# Timing of sql statement execution.
 timing = True
 
 # Table format. Possible values: psql, plain, simple, grid, fancy_grid, pipe,
