@@ -4,7 +4,6 @@ from __future__ import print_function, unicode_literals
 from collections import namedtuple
 import re
 import sqlparse
-import ipdb
 from sqlparse.sql import Comparison, Identifier, Where
 from sqlparse.tokens import Keyword, DML, Punctuation
 from .parseutils.utils import (

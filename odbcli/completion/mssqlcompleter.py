@@ -5,7 +5,6 @@
 # pylint: disable=too-many-statements
 
 from __future__ import print_function, unicode_literals
-import ipdb
 from cyanodbc import DatabaseError
 import logging
 import re
