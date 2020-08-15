@@ -1,0 +1,2 @@
+include odbcli/completion/mssqlliterals/sqlliterals.json
+include odbcli/odbclirc
