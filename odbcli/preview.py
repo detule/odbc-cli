@@ -95,7 +95,12 @@ def preview_element(my_app: "sqlApp", main_win: Window):
             else:
                 conn_preview.status = connStatus.IDLE
                 output = "No rows returned\n"
-        #TODO: disconnect conn_preview, unless active?
+        except KeyboardInterrupt:
+            conn_preview.executor.terminate()
+            conn_preview.executor.join()
+            conn_preview.connect(start_executor = True)
+            #TODO: catch ConnectError
+            output = "Quaery canceled.\n"
         except DatabaseError as e:
             output = "{}".format(e)
 
