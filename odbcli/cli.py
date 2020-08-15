@@ -22,20 +22,31 @@ def main():
 #    with patch_stdout():
     while True:
         try:
-            text = my_app.application.run()
+            app_res = my_app.application.run()
         except EOFError:
             for i in range(len(my_app.obj_list) - 1):
                 my_app.obj_list[i].conn.close()
             return
         else:
-            sqlConn = my_app.active_conn
+            # If it's a preview query we need an indication
+            # of where to run the query
+            if(app_res[0] == "preview"):
+                sqlConn = my_app.obj_list[0].selected_object.conn
+            else:
+                sqlConn = my_app.active_conn
             if sqlConn is not None:
                 #TODO also check that it is connected
                 try:
+                    secho("Executing query...Ctrl-c to cancel", err = True,
+                            fg = 'red')
                     start = time()
-                    res = sqlConn.async_execute(my_app.sql_layout.input_buffer.text)
+                    res = sqlConn.async_execute(app_res[1])
                     execution = time() - start
                     sqlConn.status = connStatus.IDLE
+                    secho("Query execution...done", err = True,
+                            fg = 'red')
+                    if(app_res[0] == "preview"):
+                        continue
                     if res.status == commandStatus.OKWRESULTS:
                         ht = my_app.application.output.get_size()[0]
                         formatted = sqlConn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, my_app.table_format)

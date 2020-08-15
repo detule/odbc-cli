@@ -1,7 +1,6 @@
 from enum import Enum
 from cyanodbc import connect, Connection, SQLGetInfo, Cursor, DatabaseError, ConnectError
 from typing import Optional
-from functools import partial
 from cli_helpers.tabular_output import TabularOutputFormatter
 from multiprocessing import Process, Pipe
 from logging import getLogger
@@ -40,6 +39,8 @@ class sqlConnection:
         if self._quotechar is None:
             self._quotechar = self.conn.get_info(
                     SQLGetInfo.SQL_IDENTIFIER_QUOTE_CHAR)
+            # pyodbc note
+            # self._quotechar = self.conn.getinfo(
         return self._quotechar
 
     def connect(
@@ -129,6 +130,8 @@ class sqlConnection:
         return self.cursor
 
     def list_catalogs(self) -> list:
+        # pyodbc note
+        # return conn.cursor().tables(catalog = "%").fetchall()
         return self.conn.list_catalogs()
 
     def list_schemas(self) -> list:
@@ -164,7 +167,10 @@ class sqlConnection:
         return self.conn.connected()
 
     def catalog_support(self) -> bool:
-        return self.conn.get_info(SQLGetInfo.SQL_CATALOG_NAME) == 'Y'
+        res = self.conn.get_info(SQLGetInfo.SQL_CATALOG_NAME)
+        return res == True or res == 'Y'
+        # pyodbc note
+        # return self.conn.getinfo(pyodbc.SQL_CATALOG_NAME) == True or self.conn.getinfo(pyodbc.SQL_CATALOG_NAME) == 'Y'
 
     def get_info(self, code: int) -> str:
         return self.conn.get_info(code)

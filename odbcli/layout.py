@@ -262,7 +262,7 @@ class sqlAppLayout:
 
         def accept(buff):
             app = get_app()
-            app.exit(result = buff.text)
+            app.exit(result = ["non-preview", buff.text])
             app.pre_run_callables.append(buff.reset)
             return True
 

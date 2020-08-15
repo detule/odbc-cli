@@ -9,6 +9,7 @@ from prompt_toolkit.layout.containers import Window, VSplit, HSplit, Conditional
 from prompt_toolkit.filters import is_done
 from cyanodbc import ConnectError, DatabaseError
 from cli_helpers.tabular_output import TabularOutputFormatter
+from functools import partial
 from .filters import ShowPreview
 from .conn import connWrappers, connStatus
 
@@ -56,6 +57,26 @@ def preview_element(my_app: "sqlApp", main_win: Window):
             ]
             )
 
+    def refresh_results(window_height) -> bool:
+        obj = my_app.obj_list[0].selected_object
+        conn_preview = obj.conn
+        resf = conn_preview.async_fetch(window_height - 4)
+
+        if len(resf.payload[0]):
+            conn_preview.status = connStatus.FETCHING
+            output = formatter.format_output(
+                resf.payload[1], resf.payload[0], format_name = "psql")
+            output = "\n".join(output)
+        else:
+            conn_preview.status = connStatus.IDLE
+            output = "No rows returned\n"
+
+        # Add text to output buffer.
+        output_field.buffer.set_document(Document(
+            text = output, cursor_position = 0), True)
+
+        return True
+
     def accept(buff: Buffer) -> bool:
         obj = my_app.obj_list[0].selected_object
         conn_preview = obj.conn
@@ -79,36 +100,14 @@ def preview_element(my_app: "sqlApp", main_win: Window):
         identifier = ".".join(list(filter(None, [catalog, schema, obj.name])))
         query = conn_preview.preview_query(table = identifier, filter_query = buff.text)
 
-        try:
-            if conn_preview.query != query:
-                conn_preview.async_fetchdone()
-                res = conn_preview.async_execute(query)
-                #TODO What about failures?
+        func = partial(refresh_results,
+                window_height = output_field.window.render_info.window_height)
+        if conn_preview.query != query:
+            my_app.application.exit(result = ["preview", query])
+            my_app.application.pre_run_callables.append(func)
+        else:
+            return func()
 
-            resf = conn_preview.async_fetch(
-                    output_field.window.render_info.window_height - 4)
-            if len(resf.payload[0]):
-                conn_preview.status = connStatus.FETCHING
-                output = formatter.format_output(
-                        resf.payload[1], resf.payload[0], format_name = "psql")
-                output = "\n".join(output)
-            else:
-                conn_preview.status = connStatus.IDLE
-                output = "No rows returned\n"
-        except KeyboardInterrupt:
-            conn_preview.executor.terminate()
-            conn_preview.executor.join()
-            conn_preview.connect(start_executor = True)
-            #TODO: catch ConnectError
-            output = "Quaery canceled.\n"
-        except DatabaseError as e:
-            output = "{}".format(e)
-
-        # Add text to output buffer.
-        output_field.buffer.set_document(Document(
-            text = output, cursor_position = 0
-        ), True)
-        return True
     input_buffer.accept_handler = accept
 
     def cancel_handler() -> None:
