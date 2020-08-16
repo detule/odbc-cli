@@ -106,7 +106,8 @@ def preview_element(my_app: "sqlApp", main_win: Window):
             my_app.application.exit(result = ["preview", query])
             my_app.application.pre_run_callables.append(func)
         else:
-            return func()
+            func()
+        return True # Keep filter text
 
     input_buffer.accept_handler = accept
 
