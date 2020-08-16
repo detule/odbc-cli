@@ -103,6 +103,9 @@ def get_connection_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
     elif status == connStatus.EXECUTING:
         token = "class:status-toolbar.conn-executing"
         status_text = "Executing"
+    elif status == connStatus.ERROR:
+        token = "class:status-toolbar.conn-executing"
+        status_text = "Unexpected Error"
     elif status == connStatus.DISCONNECTED:
         token = "class:status-toolbar.conn-fetching"
         status_text = "Disconnected"

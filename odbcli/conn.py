@@ -194,7 +194,6 @@ class sqlConnection:
                     table = table,
                     type = type)
         except DatabaseError as e:
-            self.status = connStatus.ERROR
             self.logger.warning("find_tables: %s.%s.%s, type %s: %s", catalog, schema, table, type, str(e))
 
         return res
@@ -210,7 +209,6 @@ class sqlConnection:
                         table = table,
                         column = column)
         except DatabaseError as e:
-            self.status = connStatus.ERROR
             self.logger.warning("find_columns: %s.%s.%s, column %s: %s", catalog, schema, table, column, str(e))
 
         return res
