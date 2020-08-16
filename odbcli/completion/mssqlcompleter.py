@@ -5,7 +5,6 @@
 # pylint: disable=too-many-statements
 
 from __future__ import print_function, unicode_literals
-from cyanodbc import DatabaseError
 import logging
 import re
 from itertools import count, chain
@@ -725,14 +724,12 @@ class MssqlCompleter(Completer):
             schema_names_e = self.dbmetadata['table'][catalog_e].keys()
         else: 
             if suggestion.parent:
-                try:
-                    res = self.my_app.active_conn.find_tables(
-                            catalog = catalog_u,
-                            schema = "",
-                            table = "",
-                            type = "")
-                except DatabaseError as e:
-                    res = list()
+                conn = self.my_app.active_conn
+                res = self.my_app.active_conn.find_tables(
+                        catalog = conn.sanitize_search_string(catalog_u),
+                        schema = "",
+                        table = "",
+                        type = "")
                 schema_names = []
                 for r in res:
                     if (r.schema not in schema_names and r.schema != ""):
@@ -865,11 +862,8 @@ class MssqlCompleter(Completer):
     def get_database_matches(self, _, word_before_cursor):
         catalogs = self.dbmetadata["table"].keys()
         if not catalogs and (self.my_app.active_conn.connected()):
-            try:
-                catalogs = self.escaped_names(
-                        self.my_app.active_conn.list_catalogs())
-            except DatabaseError as e:
-                catalogs = []
+            catalogs = self.escaped_names(
+                    self.my_app.active_conn.list_catalogs())
             for reltype in ('table', 'view'):
                 self.logger.debug("get_database_matches: Populating catalogs %s", reltype)
                 self.dbmetadata[reltype].update(dict.fromkeys(catalogs, {}))
@@ -1028,12 +1022,13 @@ class MssqlCompleter(Completer):
                 #    cols = func.fields()
                 #    addcols(schema, relname, tbl.alias, 'functions', cols)
             else:
-                try:
-                    res = self.my_app.active_conn.find_columns(
-                            catalog = catalog_u,
-                            schema = schema_u,
-                            table = relname_u,
-                            column = "%")
+                conn = self.my_app.active_conn
+                res = conn.find_columns(
+                        catalog = conn.sanitize_search_string(catalog_u),
+                        schema = conn.sanitize_search_string(schema_u),
+                        table = conn.sanitize_search_string(relname_u),
+                        column = "%")
+                if len(res):
                     cols = [ColumnMetadata(
                         name = col.column,
                         datatype = col.data_type,
@@ -1041,14 +1036,6 @@ class MssqlCompleter(Completer):
                         default = col.default
                         ) for col in res]
                     addcols(catalog, schema, relname, tbl.alias, "table", cols)
-                except DatabaseError as e:
-                    continue
-#                    for reltype in ('tables', 'views'):
-#                        cols = meta[reltype].get(schema, {}).get(relname)
-#                        if cols:
-#                            cols = cols.values()
-#                            addcols(schema, relname, tbl.alias, reltype, cols)
-#                            break
 
         return columns
 
@@ -1121,14 +1108,14 @@ class MssqlCompleter(Completer):
         else:
             self.logger.debug("populate_objects(%s): Did not find %s.%s metadata.  Will query.", obj_type, catalog_e, schema_e)
             obj_names = []
-            try:
-                res = self.my_app.active_conn.find_tables(
-                        catalog = self.unescape_name(catalog),
-                        schema = self.unescape_name(schema),
-                        table = "",
-                        type = obj_type)
-            except DatabaseError as e:
-                res = list()
+            conn = self.my_app.active_conn
+            res = conn.find_tables(
+                    catalog = conn.sanitize_search_string(
+                        self.unescape_name(catalog)),
+                    schema = conn.sanitize_search_string(
+                        self.unescape_name(schema)),
+                    table = "",
+                    type = obj_type)
             for r in res:
                 name_e = self.escape_name(r.name)
                 ret.append(

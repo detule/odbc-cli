@@ -2,6 +2,7 @@ import sys
 import platform
 from cyanodbc import Connection
 from typing import List, Optional
+from logging import getLogger
 from prompt_toolkit.layout.containers import Window, ScrollOffsets, ConditionalContainer, Container
 from prompt_toolkit.formatted_text.base import StyleAndTextTuples
 from prompt_toolkit.formatted_text import fragment_list_width
@@ -34,6 +35,7 @@ class myDBObject:
         self.next_object = next_object
         self.level = level
         self.selected: bool = False
+        self.logger = getLogger(__name__)
 
     def expand(self) -> None:
         """
@@ -117,16 +119,20 @@ class myDBTable(myDBObject):
 
         if self.parent is not None:
             if type(self.parent).__name__ == "myDBSchema":
-                schema = self.parent.name
+                schema = self.conn.sanitize_search_string(self.parent.name)
             elif type(self.parent).__name__ == "myDBCatalog":
-                cat = self.parent.name
+                cat = self.conn.sanitize_search_string(self.parent.name)
             if self.parent.parent is not None:
                 if type(self.parent.parent).__name__ == "myDBCatalog":
-                    cat = self.parent.parent.name
-        res = self.conn.conn.find_columns(catalog = cat,
+                    cat = self.conn.sanitize_search_string(
+                            self.parent.parent.name)
+
+        res = self.conn.find_columns(
+                catalog = cat,
                 schema = schema,
                 table = self.name,
                 column = "%")
+
         lst = [myDBColumn(
             conn = self.conn,
             name = col.column,
@@ -140,11 +146,12 @@ class myDBSchema(myDBObject):
     def expand(self) -> None:
         if self.children is not None:
             return None
-        cat = self.parent.name if self.parent is not None else "%"
-        try:
-            res = self.conn.conn.find_tables(catalog = cat, schema = self.name, table = "", type = "")
-        except DatabaseError as e:
-            res = list()
+        cat = self.conn.sanitize_search_string(self.parent.name) if self.parent is not None else "%"
+        res = self.conn.find_tables(
+                catalog = cat,
+                schema = self.name,
+                table = "",
+                type = "")
         lst = [myDBTable(
             conn = self.conn,
             name = table.name,
@@ -159,10 +166,11 @@ class myDBCatalog(myDBObject):
         if self.children is not None:
             return None
 
-        try:
-            res = self.conn.conn.find_tables(catalog = self.name, schema = "", table = "", type = "")
-        except DatabaseError as e:
-            res = list()
+        res = self.conn.find_tables(
+                catalog = self.conn.sanitize_search_string(self.name),
+                schema = "",
+                table = "",
+                type = "")
         schemas = []
         for r in res:
             if (r.schema not in schemas and r.schema != ""):
@@ -177,6 +185,8 @@ class myDBCatalog(myDBObject):
             self.add_children(list_obj = lst)
             return None
 
+        # No schemas found; but if there are tables then these are direct
+        # descendents
         lst = [myDBTable(
             conn = self.conn,
             name = table.name,
@@ -195,10 +205,7 @@ class myDBConn(myDBObject):
 
         cat_support = self.conn.catalog_support()
         if cat_support:
-            try:
-                rows = self.conn.list_catalogs()
-            except DatabaseError as e:
-                rows = list()
+            rows = self.conn.list_catalogs()
             if len(rows):
                 lst = [myDBCatalog(
                     conn = self.conn,
@@ -208,10 +215,12 @@ class myDBConn(myDBObject):
                     level = self.level + 1) for row in rows]
                 self.add_children(list_obj = lst)
             return None
-        try:
-            res = self.conn.conn.find_tables(catalog = "%", schema = "", table = "", type = "")
-        except DatabaseError as e:
-            res = list()
+
+        res = self.conn.find_tables(
+                catalog = "%",
+                schema = "",
+                table = "",
+                type = "")
         schemas = []
         for r in res:
             if (r.schema not in schemas and r.schema != ""):

@@ -4,6 +4,7 @@ from typing import Optional
 from cli_helpers.tabular_output import TabularOutputFormatter
 from multiprocessing import Process, Pipe
 from logging import getLogger
+from re import sub
 from .executor import executor_process, cmsg, commandStatus
 
 formatter = TabularOutputFormatter()
@@ -13,6 +14,7 @@ class connStatus(Enum):
     IDLE = 1
     EXECUTING = 2
     FETCHING = 3
+    ERROR = 4
 
 class sqlConnection:
     def __init__(
@@ -33,6 +35,8 @@ class sqlConnection:
         self.parent_chan, self.child_chan = Pipe()
         self.logger = getLogger(__name__)
         self._quotechar = None
+        self._search_escapechar = None
+        self._search_escapepattern = None
 
     @property
     def quotechar(self) -> str:
@@ -42,6 +46,25 @@ class sqlConnection:
             # pyodbc note
             # self._quotechar = self.conn.getinfo(
         return self._quotechar
+
+    @property
+    def search_escapechar(self) -> str:
+        if self._search_escapechar is None:
+            self._search_escapechar = self.conn.get_info(
+                    SQLGetInfo.SQL_SEARCH_PATTERN_ESCAPE)
+        return self._search_escapechar
+
+    @property
+    def search_escapepattern(self) -> str:
+        if self._search_escapepattern is None:
+            # https://stackoverflow.com/questions/2428117/casting-raw-strings-python
+            self._search_escapepattern = \
+                (self.search_escapechar).encode("unicode-escape").decode() + "\\1"
+
+        return self._search_escapepattern
+
+    def sanitize_search_string(self, term) -> str:
+        return sub("(_|%)", self.search_escapepattern, term)
 
     def connect(
             self,
@@ -132,12 +155,28 @@ class sqlConnection:
     def list_catalogs(self) -> list:
         # pyodbc note
         # return conn.cursor().tables(catalog = "%").fetchall()
-        return self.conn.list_catalogs()
+        res = []
+
+        try:
+            if self.conn.connected():
+                res = self.conn.list_catalogs()
+        except DatabaseError as e:
+            self.status = connStatus.ERROR
+            self.logger.warning("list_catalogs: %s", str(e))
+
+        return res
 
     def list_schemas(self) -> list:
-        if self.conn.connected():
-            return self.conn.list_schemas()
-        return None
+        res = []
+
+        try:
+            if self.conn.connected():
+                res = self.conn.list_schemas()
+        except DatabaseError as e:
+            self.status = connStatus.ERROR
+            self.logger.warning("list_schemas: %s", str(e))
+
+        return res
 
     def find_tables(
             self,
@@ -145,18 +184,36 @@ class sqlConnection:
             schema = "",
             table = "",
             type = "") -> list:
-        res = self.conn.find_tables(catalog = catalog,
-                schema = schema,
-                table = table,
-                type = type)
+        res = []
+
+        try:
+            if self.conn.connected():
+                res = self.conn.find_tables(
+                    catalog = catalog,
+                    schema = schema,
+                    table = table,
+                    type = type)
+        except DatabaseError as e:
+            self.status = connStatus.ERROR
+            self.logger.warning("find_tables: %s.%s.%s, type %s: %s", catalog, schema, table, type, str(e))
+
         return res
 
     def find_columns(self, catalog, schema, table, column):
-        return self.conn.find_columns(
-                catalog = catalog,
-                schema = schema,
-                table = table,
-                column = column)
+        res = []
+
+        try:
+            if self.conn.connected():
+                res = self.conn.find_columns(
+                        catalog = catalog,
+                        schema = schema,
+                        table = table,
+                        column = column)
+        except DatabaseError as e:
+            self.status = connStatus.ERROR
+            self.logger.warning("find_columns: %s.%s.%s, column %s: %s", catalog, schema, table, column, str(e))
+
+        return res
 
     def current_catalog(self) -> str:
         if self.conn.connected():
