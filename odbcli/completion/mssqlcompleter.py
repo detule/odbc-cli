@@ -738,11 +738,12 @@ class MssqlCompleter(Completer):
                 schema_names = set(self.my_app.active_conn.list_schemas())
             
             schema_names_e = self.escaped_names(schema_names)
-            for metadata in self.dbmetadata.values():
-                metadata[catalog_e] = {}
-                for schema_e in schema_names_e:
-                    self.logger.debug("get_schema_matches: Creating dict %s.%s", catalog_e, schema_e)
-                    metadata[catalog_e][schema_e] = {}
+            if len(schema_names_e):
+                for metadata in self.dbmetadata.values():
+                    metadata[catalog_e] = {}
+                    for schema_e in schema_names_e:
+                        self.logger.debug("get_schema_matches: Creating dict %s.%s", catalog_e, schema_e)
+                        metadata[catalog_e][schema_e] = {}
 
         return self.find_matches(
             word_before_cursor, schema_names_e, meta='schema')
@@ -1133,7 +1134,6 @@ class MssqlCompleter(Completer):
                 metadata[catalog_e][schema_e].update(
                         dict.fromkeys(obj_names, {})
                 )
-
         return ret
 
     def populate_functions(self, schema, filter_func):
