@@ -103,6 +103,21 @@ class sqlConnection:
         if self.executor and self.executor.is_alive():
             self.logger.debug("Sending query %s to pid %d",
                     query, self.executor.pid)
+            # TODO: message should carry
+            # current catalog.  One might
+            # think that the main process
+            # connection always "follows"
+            # database changes since all
+            # main queries get executed
+            # against executor thread
+            # and main process conn only
+            # gets used for sidebar/auto
+            # completion.  But, for
+            # example the MYSQL driver
+            # if starting without a
+            # declared database will just
+            # switch to the first db
+            # when running find_columns
             self.parent_chan.send(
                     cmsg("execute", query, None))
             # Will block but can be interrupted
@@ -198,7 +213,12 @@ class sqlConnection:
 
         return res
 
-    def find_columns(self, catalog, schema, table, column):
+    def find_columns(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            column = "") -> list:
         res = []
 
         try:
@@ -246,7 +266,7 @@ class sqlConnection:
             self.cursor = None
         self.query = None
 
-    def preview_query(self, table, filter_query = "", limit = 1000) -> str:
+    def preview_query(self, table, filter_query = "", limit = -1) -> str:
         qry = "SELECT * FROM " + table + " " + filter_query
         if limit > 0:
             qry = qry + " LIMIT " + str(limit)
@@ -268,23 +288,54 @@ class sqlConnection:
 
 connWrappers = {}
 
-def mssql_preview_query(self, table, filter_query = "", limit = 1000) -> str:
-    qry = " * FROM " + table + " " + filter_query
-    if limit > 0:
-        qry = "SELECT TOP " + str(limit) + qry
-    else:
-        qry = "SELECT" + qry
-    return qry
+class MSSQL(sqlConnection):
+    def mssql_preview_query(
+            self,
+            table,
+            filter_query = "",
+            limit = -1) -> str:
+        qry = " * FROM " + table + " " + filter_query
+        if limit > 0:
+            qry = "SELECT TOP " + str(limit) + qry
+        else:
+            qry = "SELECT" + qry
+        return qry
 
-connWrappers["MySQL"] = type("MySQL", (sqlConnection,), {
-    "find_tables": lambda self, catalog, schema, table, type:
-    self.conn.find_tables(catalog = schema, schema = "", table = table, type = type),
-    "find_columns": lambda self, catalog, schema, table, column:
-    self.conn.find_columns(catalog = schema, schema = "", table = table, column = column)
-    })
+class MySQL(sqlConnection):
+    def find_tables(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            type = "") -> list:
 
-connWrappers["Microsoft SQL Server"] = type(
-        "Microsoft SQL Server", (sqlConnection,), {
-            "preview_query": mssql_preview_query
-        })
-connWrappers["SQLite"] = type("SQLite", (sqlConnection,), {})
+        if catalog in ["", "null"] and schema not in ["", "null"]:
+            catalog = schema
+            schema = ""
+
+        return super().find_tables(
+                catalog = catalog,
+                schema = schema,
+                table = table,
+                type = type)
+
+    def find_columns(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            column = "") -> list:
+
+        if catalog in ["", "null"] and schema not in ["", "null"]:
+            catalog = schema
+            schema = ""
+
+        return super().find_columns(
+                catalog = catalog,
+                schema = schema,
+                table = table,
+                column = column)
+
+connWrappers["MySQL"] = MySQL
+connWrappers["Microsoft SQL Server"] = MSSQL
+connWrappers["SQLite"] = sqlConnection

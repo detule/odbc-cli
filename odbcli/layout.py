@@ -116,7 +116,7 @@ def get_connection_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
     result: StyleAndTextTuples = []
     append = result.append
 
-    append((token, "Connection Status: " + status_text))
+    append((token, " " + status_text))
     return result
 
 
@@ -231,8 +231,7 @@ class sqlAppLayout:
                             content = sql_sidebar_help(self.my_app),
                         ),
                         Float(
-                            content = self.lprompt,
-                            width = 50
+                            content = self.lprompt
                             ),
                         Float(
                             content = self.preview,

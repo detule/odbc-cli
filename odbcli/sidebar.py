@@ -116,16 +116,17 @@ class myDBTable(myDBObject):
             return None
         cat = "%"
         schema = "%"
+        # https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function?view=sql-server-ver15
+        # CatalogName cannot contain a string search pattern
 
         if self.parent is not None:
             if type(self.parent).__name__ == "myDBSchema":
                 schema = self.conn.sanitize_search_string(self.parent.name)
             elif type(self.parent).__name__ == "myDBCatalog":
-                cat = self.conn.sanitize_search_string(self.parent.name)
+                cat = self.parent.name
             if self.parent.parent is not None:
                 if type(self.parent.parent).__name__ == "myDBCatalog":
-                    cat = self.conn.sanitize_search_string(
-                            self.parent.parent.name)
+                    cat = self.parent.parent.name
 
         res = self.conn.find_columns(
                 catalog = cat,

@@ -72,13 +72,13 @@ def login_prompt(my_app: "sqlApp", main_win: Window):
                     msgLabel
                 ],
                 padding=D(preferred=1, max=1),
-        ),
-        buttons=[ok_button, cancel_button],
-        with_background = False
+            ),
+            width = D(min = 20, preferred = 50),
+            buttons=[ok_button, cancel_button],
+            with_background = False
     )
 
     return ConditionalContainer(
             content = dialog,
             filter = ShowLoginPrompt(my_app) & ~is_done
     )
-
