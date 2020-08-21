@@ -17,10 +17,12 @@ from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.application import get_app
 from prompt_toolkit.mouse_events import MouseEvent
 from prompt_toolkit.lexers import PygmentsLexer
+from prompt_toolkit.selection import SelectionType
 from pygments.lexers.sql import SqlLexer
 from os.path import expanduser
 from .sidebar import sql_sidebar, sql_sidebar_help, show_sidebar_button_info, sql_sidebar_navigation
 from .loginprompt import login_prompt
+from .disconnect_dialog import disconnect_dialog
 from .preview import preview_element
 from .filters import ShowLoginPrompt, ShowSidebar, MultilineFilter
 from .utils import if_mousedown
@@ -211,9 +213,9 @@ class sqlAppLayout:
                 scroll_offsets=ScrollOffsets(bottom = 1, left = 4, right = 4)
             )
 
-        self.sidebar = sql_sidebar(self.my_app)
-        self.lprompt = login_prompt(self.my_app, self.main_win)
-        self.preview = preview_element(self.my_app, self.main_win)
+        self.lprompt = login_prompt(self.my_app)
+        self.preview = preview_element(self.my_app)
+        self.disconnect_dialog = disconnect_dialog(self.my_app)
         container = HSplit([
             VSplit([
                 FloatContainer(
@@ -237,6 +239,9 @@ class sqlAppLayout:
                             content = self.preview,
                             ),
                         Float(
+                            content = self.disconnect_dialog,
+                            ),
+                        Float(
                             xcursor = True,
                             ycursor = True,
                             transparent = True,
@@ -249,12 +254,7 @@ class sqlAppLayout:
                     ]
                 ),
                 ConditionalContainer(
-                    content = HSplit(
-                        [
-                            self.sidebar,
-                            Window(style="class:sidebar,separator", height=1),
-                            sql_sidebar_navigation()
-                    ]),
+                    content = sql_sidebar(self.my_app),
                     filter=ShowSidebar(self.my_app) & ~is_done,
                 )
             ]),

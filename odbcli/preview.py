@@ -13,7 +13,7 @@ from functools import partial
 from .filters import ShowPreview
 from .conn import connWrappers, connStatus
 
-def preview_element(my_app: "sqlApp", main_win: Window):
+def preview_element(my_app: "sqlApp"):
     help_text = """
     Press Enter in the input box to page through the table.
     Alternatively, enter a filtering SQL statement and then press Enter
@@ -102,7 +102,7 @@ def preview_element(my_app: "sqlApp", main_win: Window):
 
         func = partial(refresh_results,
                 window_height = output_field.window.render_info.window_height)
-        if conn_preview.query != query:
+        if conn_preview.query != query or conn_preview.status == connStatus.IDLE:
             my_app.application.exit(result = ["preview", query])
             my_app.application.pre_run_callables.append(func)
         else:
@@ -120,8 +120,9 @@ def preview_element(my_app: "sqlApp", main_win: Window):
             text = help_text, cursor_position = 0
         ), True)
         my_app.show_preview = False
+        my_app.show_sidebar = True
         my_app.application.layout.focus(input_buffer)
-        my_app.application.layout.focus(main_win)
+        my_app.application.layout.focus("sidebarbuffer")
         return None
 
     cancel_button = Button(text = "Done", handler = cancel_handler)

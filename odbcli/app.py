@@ -6,7 +6,7 @@ from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 from prompt_toolkit.key_binding.bindings.auto_suggest import load_auto_suggest_bindings
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding.bindings.focus import focus_next
-from prompt_toolkit.filters import Condition
+from prompt_toolkit.filters import Condition, has_focus
 from logging.handlers import RotatingFileHandler
 from cyanodbc import datasources
 from .sidebar import myDBConn
@@ -35,6 +35,7 @@ class sqlApp:
         self.show_sidebar: bool = False
         self.show_login_prompt: bool = False
         self.show_preview: bool = False
+        self.show_disconnect_dialog: bool = False
         self.active_conn = None
         self.obj_list = []
         dsns = list(datasources().keys())
@@ -144,19 +145,27 @@ class sqlApp:
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
             event.app.exit(exception = EOFError, style="class:exiting")
         # Global key bindings.
-        kb.add("tab")(focus_next)
+        @kb.add("tab", filter = Condition(lambda: self.show_preview or self.show_login_prompt))
+        def _(event):
+            event.app.layout.focus_next()
         @kb.add("c-f")
         def _(event):
             " Toggle between Emacs and Vi mode. "
             self.vi_mode = not self.vi_mode
         # apparently ctrls does this
-        @kb.add("c-t")
+        @kb.add("c-t", filter = Condition(lambda: not self.show_preview))
         def _(event):
             """
             Show/hide sidebar.
             """
             self.show_sidebar = not self.show_sidebar
-        sidebar_visible = Condition(lambda: self.show_sidebar and not self.show_login_prompt and not self.show_preview)
+            if self.show_sidebar:
+                event.app.layout.focus("sidebarbuffer")
+            else:
+                event.app.layout.focus_previous()
+
+        sidebar_visible = Condition(lambda: self.show_sidebar and not self.show_login_prompt and not self.show_preview) \
+                        & ~has_focus("sidebarsearchbuffer")
         @kb.add("up", filter=sidebar_visible)
         @kb.add("c-p", filter=sidebar_visible)
         @kb.add("k", filter=sidebar_visible)
@@ -171,7 +180,7 @@ class sqlApp:
             " Go to next option. "
             self.obj_list[0].select_next()
 
-        @kb.add("enter", filter=sidebar_visible)
+        @kb.add("enter", filter = sidebar_visible)
         def _(event):
             " If connection, connect.  If table preview"
             obj = self.obj_list[0].selected_object
@@ -184,6 +193,7 @@ class sqlApp:
                 self.active_conn = obj.conn
             elif type(obj).__name__ == "myDBTable":
                 self.show_preview = True
+                self.show_sidebar = False
                 event.app.layout.focus(self.sql_layout.preview)
 
         @kb.add("right", filter=sidebar_visible)
@@ -191,14 +201,21 @@ class sqlApp:
         @kb.add(" ", filter=sidebar_visible)
         def _(event):
             " Select next value for current option. "
-            self.obj_list[0].selected_object.expand()
+            obj = self.obj_list[0].selected_object
+            obj.expand()
+            if type(obj).__name__ == "myDBConn" and not obj.conn.connected():
+                self.show_login_prompt = True
+                event.app.layout.focus(self.sql_layout.lprompt)
 
         @kb.add("left", filter=sidebar_visible)
         @kb.add("h", filter=sidebar_visible)
         def _(event):
             " Select next value for current option. "
             obj = self.obj_list[0].selected_object
-            if obj is not None:
+            if type(obj).__name__ == "myDBConn" and obj.conn.connected() and obj.children is None:
+                self.show_disconnect_dialog = True
+                event.app.layout.focus(self.sql_layout.disconnect_dialog)
+            else:
                 obj.collapse()
 
         auto_suggest_bindings = load_auto_suggest_bindings()

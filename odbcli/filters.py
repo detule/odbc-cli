@@ -21,6 +21,10 @@ class ShowPreview(SqlAppFilter):
     def __call__(self) -> bool:
         return self.my_app.show_preview
 
+class ShowDisconnectDialog(SqlAppFilter):
+    def __call__(self) -> bool:
+        return self.my_app.show_disconnect_dialog
+
 class MultilineFilter(SqlAppFilter):
     def _is_open_quote(self, sql: str):
         """ To implement """

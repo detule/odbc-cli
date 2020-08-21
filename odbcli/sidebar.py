@@ -1,16 +1,20 @@
 import sys
 import platform
 from cyanodbc import Connection
-from typing import List, Optional
+from typing import List, Optional, Callable
 from logging import getLogger
-from prompt_toolkit.layout.containers import Window, ScrollOffsets, ConditionalContainer, Container
+from prompt_toolkit.layout.containers import HSplit, Window, ScrollOffsets, ConditionalContainer, Container
 from prompt_toolkit.formatted_text.base import StyleAndTextTuples
 from prompt_toolkit.formatted_text import fragment_list_width
-from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.controls import FormattedTextControl, BufferControl, UIContent
 from prompt_toolkit.layout.dimension import Dimension
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.document import Document
 from prompt_toolkit.filters import is_done
 from prompt_toolkit.layout.margins import ScrollbarMargin
 from prompt_toolkit.mouse_events import MouseEvent
+from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.widgets import SearchToolbar
 from .conn import sqlConnection
 from .filters import ShowSidebar
 from .utils import if_mousedown
@@ -245,79 +249,6 @@ class myDBConn(myDBObject):
         if len(lst):
             self.add_children(list_obj = lst)
 
-def sql_sidebar(my_app: "sqlApp") -> Window:
-    """
-    Create the `Layout` for the sidebar with the configurable objects.
-    """
-
-    @if_mousedown
-    def expand_item(obj: "myDBObject") -> None:
-        obj.expand()
-    def get_text_fragments() -> StyleAndTextTuples:
-        tokens: StyleAndTextTuples = []
-        def append(obj: "myDBObject") -> None:
-            " Recursively build the token list "
-            selected = obj.selected
-            expanded = obj.children is not None
-            active = my_app.active_conn is not None and my_app.active_conn is obj.conn and obj.level == 0
-
-            act = ",active" if active else ""
-            sel = ",selected" if selected else ""
-            if len(obj.name) > 24 -  2 * obj.level:
-                name_trim = obj.name[:24 - 2 * obj.level - 3] + "..."
-            else:
-                name_trim = ("%-" + str(24 - 2 * obj.level) + "s") % obj.name
-
-            tokens.append(
-                ("class:sidebar.status" + sel, " " * 2 * obj.level, expand_item)
-            )
-            tokens.append(("class:sidebar" + sel, " >" if selected else "  "))
-            tokens.append(
-                ("class:sidebar.label" + sel + act,
-#                ("%-" + str(24 - 2 * obj.level) + "s") % obj.name,
-                name_trim,
-                expand_item)
-            )
-            tokens.append(("class:sidebar.status" + sel + act, " ", expand_item))
-            tokens.append(("class:sidebar.status" + sel + act, "%+12s" % obj.otype, expand_item))
-
-            if selected:
-                tokens.append(("[SetCursorPosition]", ""))
-
-            if expanded:
-                tokens.append(("class:sidebar", "\/"))
-            else:
-                tokens.append(("class:sidebar", " <" if selected else "  "))
-            tokens.append(("class:sidebar", "\n"))
-
-        obj = my_app.obj_list[0]
-        append(obj)
-        while obj.next_object:
-            append(obj.next_object)
-            obj = obj.next_object
-
-        tokens.pop()  # Remove last newline.
-
-        return tokens
-
-    class Control(FormattedTextControl):
-        def move_cursor_down(self):
-            my_app.obj_list[0].select_next()
-        # Need to figure out what do do here
-        # AFAICT thse are only called for the mouse handler
-        # when events are otherwise not handled
-        def move_cursor_up(self):
-            my_app.obj_list[0].select_previous()
-
-    return Window(
-        Control(get_text_fragments),
-        right_margins = [ScrollbarMargin(display_arrows = True)],
-        style = "class:sidebar",
-        width = Dimension.exact( 45 ),
-        height = Dimension(min = 15, preferred = 33),
-        scroll_offsets = ScrollOffsets(top = 1, bottom = 1),
-    )
-
 def sql_sidebar_help(my_app: "sqlApp"):
     """
     Create the `Layout` for the help text for the current item in the sidebar.
@@ -412,3 +343,163 @@ def show_sidebar_button_info(my_app: "sqlApp") -> Container:
             filter=~is_done
 #            & renderer_height_is_known
             )
+
+def sql_sidebar(my_app: "sqlApp") -> Window:
+    """
+    Create the `Layout` for the sidebar with the configurable objects.
+    """
+
+    @if_mousedown
+    def expand_item(obj: "myDBObject") -> None:
+        obj.expand()
+
+    def tokenize_obj(obj: "myDBObject") -> StyleAndTextTuples:
+        " Recursively build the token list "
+        tokens: StyleAndTextTuples = []
+        selected = obj.selected
+        expanded = obj.children is not None
+        active = my_app.active_conn is not None and my_app.active_conn is obj.conn and obj.level == 0
+
+        act = ",active" if active else ""
+        sel = ",selected" if selected else ""
+        if len(obj.name) > 24 -  2 * obj.level:
+            name_trim = obj.name[:24 - 2 * obj.level - 3] + "..."
+        else:
+            name_trim = ("%-" + str(24 - 2 * obj.level) + "s") % obj.name
+
+        tokens.append(
+            ("class:sidebar.status" + sel, " " * 2 * obj.level, expand_item)
+        )
+        tokens.append(("class:sidebar" + sel, " >" if selected else "  "))
+        tokens.append(
+            ("class:sidebar.label" + sel + act,
+#                ("%-" + str(24 - 2 * obj.level) + "s") % obj.name,
+            name_trim,
+            expand_item)
+        )
+        tokens.append(("class:sidebar.status" + sel + act, " ", expand_item))
+        tokens.append(("class:sidebar.status" + sel + act, "%+12s" % obj.otype, expand_item))
+
+        if selected:
+            tokens.append(("[SetCursorPosition]", ""))
+
+        if expanded:
+            tokens.append(("class:sidebar", "\/"))
+        else:
+            tokens.append(("class:sidebar", " <" if selected else "  "))
+
+        return tokens
+
+    def _buffer_pos_changed(buff):
+        """ When the cursor changes in the sidebar buffer, make sure the appropriate
+            database object is market as selected
+        """
+        # Only when this buffer has the focus.
+        try:
+            line_no = buff.document.cursor_position_row
+
+            if line_no < 0:  # When the cursor is above the inserted region.
+                raise IndexError
+
+            obj = my_app.obj_list[0].selected_object
+            if obj is not None:
+                obj.selected = False
+            idx = 0
+            obj = my_app.obj_list[0]
+            while idx < line_no:
+                if not obj.next_object:
+                    raise IndexError
+                idx += 1
+                obj = obj.next_object
+
+            obj.selected = True
+
+        except IndexError:
+            pass
+
+    search_buffer = Buffer(name = "sidebarsearchbuffer")
+    search_field = SearchToolbar(search_buffer = search_buffer)
+    sidebar_buffer = Buffer(
+        name = "sidebarbuffer",
+        read_only = True,
+        on_cursor_position_changed = _buffer_pos_changed
+    )
+
+    class myLexer(Lexer):
+        def __init__(self, token_list = None, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.token_list = token_list
+
+        def lex_document(self, document: Document) -> Callable[[int], StyleAndTextTuples]:
+            def get_line(lineno: int) -> StyleAndTextTuples:
+                # TODO: raise out-of-range exception
+                return self.token_list[lineno]
+            return get_line
+
+        def reset_tokens(self, tokens: [StyleAndTextTuples]):
+            self.token_list = tokens
+
+
+    sidebar_lexer = myLexer()
+
+    class myControl(BufferControl):
+
+        def move_cursor_down(self):
+            my_app.obj_list[0].select_next()
+        # Need to figure out what do do here
+        # AFAICT thse are only called for the mouse handler
+        # when events are otherwise not handled
+        def move_cursor_up(self):
+            my_app.obj_list[0].select_previous()
+
+        def mouse_handler(self, mouse_event: MouseEvent) -> "NotImplementedOrNone":
+            """
+                There is an intricate relationship between the cursor position
+                in the sidebar document and which object is market as 'selected'
+                in the linked list.  Let's not muck that up by allowing the user
+                to change the cursor position in the sidebar document with the mouse.
+            """
+            return NotImplemented
+
+        def create_content(self, width: int, height: Optional[int]) -> UIContent:
+            res = []
+            res_tokens = []
+            count = 0
+            obj = my_app.obj_list[0]
+            res.append(obj.name)
+            res_tokens.append(tokenize_obj(obj))
+            found_selected = obj.selected
+            idx = 0
+            while obj.next_object:
+                res.append(obj.next_object.name)
+                res_tokens.append(tokenize_obj(obj.next_object))
+                if not obj.selected and not found_selected:
+                    count += 1
+                    idx += len(obj.name) + 1 # Newline character
+                else:
+                    found_selected = True
+                obj = obj.next_object
+
+            self.buffer.set_document(Document(
+                text = "\n".join(res), cursor_position = idx), True)
+            self.lexer.reset_tokens(res_tokens)
+            return super().create_content(width, height)
+
+    sidebar_control = myControl(
+            buffer = sidebar_buffer,
+            lexer = sidebar_lexer,
+            search_buffer_control = search_field.control,
+            focusable = True,
+            )
+
+    return HSplit([
+        search_field,
+        Window(
+            sidebar_control,
+            right_margins = [ScrollbarMargin(display_arrows = True)],
+            style = "class:sidebar",
+            width = Dimension.exact( 45 ),
+            height = Dimension(min = 15, preferred = 33),
+            scroll_offsets = ScrollOffsets(top = 1, bottom = 1)),
+        Window(style="class:sidebar,separator", height=1),
+        sql_sidebar_navigation()])

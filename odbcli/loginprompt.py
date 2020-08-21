@@ -4,15 +4,14 @@ from prompt_toolkit.widgets import Button, Dialog, Label
 from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.layout.containers import HSplit, ConditionalContainer, WindowAlign, Window
 from prompt_toolkit.filters import is_done
-from prompt_toolkit.application import get_app
 from cyanodbc import ConnectError, DatabaseError, SQLGetInfo
 from .conn import connWrappers
 from .filters import ShowLoginPrompt
 
-def login_prompt(my_app: "sqlApp", main_win: Window):
+def login_prompt(my_app: "sqlApp"):
 
     def ok_handler() -> None:
-        get_app().layout.focus(uidTextfield)
+        my_app.application.layout.focus(uidTextfield)
         obj = my_app.obj_list[0].selected_object
         try:
             obj.conn.connect(username = uidTextfield.text, password = pwdTextfield.text)
@@ -36,18 +35,21 @@ def login_prompt(my_app: "sqlApp", main_win: Window):
         else:
             msgLabel.text = ""
             my_app.show_login_prompt = False
-            get_app().layout.focus(main_win)
+            my_app.show_sidebar = True
+            my_app.application.layout.focus("sidebarbuffer")
 
         uidTextfield.text = ""
         pwdTextfield.text = ""
 
     def cancel_handler() -> None:
         msgLabel.text = ""
+        my_app.application.layout.focus(uidTextfield)
         my_app.show_login_prompt = False
-        get_app().layout.focus(main_win)
+        my_app.show_sidebar = True
+        my_app.application.layout.focus("sidebarbuffer")
 
     def accept(buf: Buffer) -> bool:
-        get_app().layout.focus(ok_button)
+        my_app.application.layout.focus(ok_button)
         return True
 
     ok_button = Button(text="OK", handler=ok_handler)
