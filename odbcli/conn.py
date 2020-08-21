@@ -64,7 +64,11 @@ class sqlConnection:
         return self._search_escapepattern
 
     def sanitize_search_string(self, term) -> str:
-        return sub("(_|%)", self.search_escapepattern, term)
+        if term is not None and len(term):
+            res = sub("(_|%)", self.search_escapepattern, term)
+        else:
+            res = term
+        return term
 
     def connect(
             self,
@@ -171,7 +175,6 @@ class sqlConnection:
         # pyodbc note
         # return conn.cursor().tables(catalog = "%").fetchall()
         res = []
-
         try:
             if self.conn.connected():
                 res = self.conn.list_catalogs()
