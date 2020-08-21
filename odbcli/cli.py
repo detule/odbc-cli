@@ -37,25 +37,23 @@ def main():
             if sqlConn is not None:
                 #TODO also check that it is connected
                 try:
-                    secho("Executing query...Ctrl-c to cancel", err = True,
-                            fg = 'red')
+                    secho("Executing query...Ctrl-c to cancel", err = False)
                     start = time()
                     res = sqlConn.async_execute(app_res[1])
                     execution = time() - start
                     sqlConn.status = connStatus.IDLE
-                    secho("Query execution...done", err = True,
-                            fg = 'red')
+                    secho("Query execution...done", err = False)
                     if(app_res[0] == "preview"):
                         continue
+                    if my_app.timing_enabled:
+                        print("Time: %0.03fs" % execution)
                     if res.status == commandStatus.OKWRESULTS:
                         ht = my_app.application.output.get_size()[0]
                         formatted = sqlConn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, my_app.table_format)
                         sqlConn.status = connStatus.FETCHING
+                        echo_via_pager(formatted)
                     else:
-                        formatted = "No rows returned\n"
-                    if my_app.timing_enabled:
-                        print("Time: %0.03fs" % execution)
-                    echo_via_pager(formatted)
+                        secho("No rows returned\n", err = False)
                 except BrokenPipeError:
                     my_app.logger.debug('BrokenPipeError caught. Recovering...', file = stderr)
                 except KeyboardInterrupt:
