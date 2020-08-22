@@ -206,7 +206,7 @@ class sqlAppLayout:
                     lambda: (
                         None
                         if get_app().is_done
-                        else Dimension(min = self.my_app.min_num_menu_lines)
+                        else (Dimension(min = self.my_app.min_num_menu_lines) if not self.my_app.show_preview else Dimension(min = self.my_app.min_num_menu_lines, preferred = 180))
                     )
                 ),
                 get_line_prefix = partial(sql_line_prefix, my_app = self.my_app),
