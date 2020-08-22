@@ -32,7 +32,7 @@ class sqlApp:
         self.multiline: bool = c["main"].as_bool("multi_line")
         self.min_num_menu_lines = c["main"].as_int("min_num_menu_lines")
 
-        self.show_sidebar: bool = False
+        self.show_sidebar: bool = True
         self.show_login_prompt: bool = False
         self.show_preview: bool = False
         self.show_disconnect_dialog: bool = False
