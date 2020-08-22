@@ -103,6 +103,15 @@ class sqlConnection:
                 self.executor.join()
                 raise ConnectError("Connection failure in executor")
 
+    def async_lastresponse(self) -> cmsg:
+        if self.executor and self.executor.is_alive():
+            self.logger.debug("Asking for last message, executor pid %d",
+                    self.executor.pid)
+            self.parent_chan.send(cmsg("lastresponse", None, None))
+            resp = self.parent_chan.recv()
+            # Above should never fail
+            return resp
+
     def async_execute(self, query) -> cmsg:
         if self.executor and self.executor.is_alive():
             self.logger.debug("Sending query %s to pid %d",

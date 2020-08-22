@@ -52,8 +52,10 @@ def main():
                         formatted = sqlConn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, my_app.table_format)
                         sqlConn.status = connStatus.FETCHING
                         echo_via_pager(formatted)
-                    else:
+                    elif res.status == commandStatus.OK:
                         secho("No rows returned\n", err = False)
+                    else:
+                        secho("Query error: %s\n" % res.payload, err = True, fg = "red")
                 except BrokenPipeError:
                     my_app.logger.debug('BrokenPipeError caught. Recovering...', file = stderr)
                 except KeyboardInterrupt:

@@ -57,6 +57,7 @@ def executor_process(chan, log_level = INFO):
     crsr = Cursor(conn)
 
     my_logger = initiate_logging(log_level)
+    last_cmsg = cmsg("", None, commandStatus.OK)
     while True:
         my_logger.debug("Waiting for message")
         try:
@@ -119,6 +120,9 @@ def executor_process(chan, log_level = INFO):
                 response = conn.list_schemas()
             else:
                 status = commandStatus.FAIL
+        elif msg.type == "lastresponse":
+            response = last_cmsg.payload
+            status = last_cmsg.status
         elif msg.type == "fetchdone":
             crsr.close()
         else:
@@ -126,4 +130,8 @@ def executor_process(chan, log_level = INFO):
             response = "Unknown command"
 
         my_logger.debug("Sending message back %d", int(status))
+        if msg.type == "execute":
+            # For now we only keep track of the results of the last async
+            # execution
+            last_cmsg = cmsg(msg.type, response, status)
         chan.send(cmsg(msg.type, response, status))

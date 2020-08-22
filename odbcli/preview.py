@@ -12,6 +12,7 @@ from cli_helpers.tabular_output import TabularOutputFormatter
 from functools import partial
 from .filters import ShowPreview
 from .conn import connWrappers, connStatus
+from .executor import commandStatus
 
 def preview_element(my_app: "sqlApp"):
     help_text = """
@@ -60,16 +61,21 @@ def preview_element(my_app: "sqlApp"):
     def refresh_results(window_height) -> bool:
         obj = my_app.obj_list[0].selected_object
         conn_preview = obj.conn
-        resf = conn_preview.async_fetch(window_height - 4)
+        res_last = conn_preview.async_lastresponse()
 
-        if len(resf.payload[0]):
-            conn_preview.status = connStatus.FETCHING
-            output = formatter.format_output(
-                resf.payload[1], resf.payload[0], format_name = "psql")
-            output = "\n".join(output)
+        if res_last.status == commandStatus.FAIL:
+            # Let's display the error message to the user
+            output = res_last.payload
         else:
-            conn_preview.status = connStatus.IDLE
-            output = "No rows returned\n"
+            resf = conn_preview.async_fetch(size = window_height - 4)
+            if len(resf.payload[0]):
+                conn_preview.status = connStatus.FETCHING
+                output = formatter.format_output(
+                    resf.payload[1], resf.payload[0], format_name = "psql")
+                output = "\n".join(output)
+            else:
+                conn_preview.status = connStatus.IDLE
+                output = "No rows returned\n"
 
         # Add text to output buffer.
         output_field.buffer.set_document(Document(
@@ -103,9 +109,11 @@ def preview_element(my_app: "sqlApp"):
         func = partial(refresh_results,
                 window_height = output_field.window.render_info.window_height)
         if conn_preview.query != query or conn_preview.status == connStatus.IDLE:
+            # Exit the app to execute the query
             my_app.application.exit(result = ["preview", query])
             my_app.application.pre_run_callables.append(func)
         else:
+            # No need to exit let's just go and fetch
             func()
         return True # Keep filter text
 
