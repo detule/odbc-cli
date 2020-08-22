@@ -1006,8 +1006,16 @@ class MssqlCompleter(Completer):
                 cols = ctes[normalize_ref(tbl.name)]
                 addcols(None, None, tbl.name, 'CTE', tbl.alias, cols)
                 continue
-            catalog_u = self.unescape_name(tbl.catalog)
-            schema_u = self.unescape_name(tbl.schema)
+            if tbl.catalog:
+                catalog_u = self.unescape_name(tbl.catalog)
+            else:
+                catalog_u = self.my_app.active_conn.current_catalog()
+
+            # TODO: What if no schema? Possible in some DBMS
+            if tbl.schema:
+                schema_u = self.unescape_name(tbl.schema)
+            else:
+                schema_u = ""
             relname_u = self.unescape_name(tbl.name)
             catalog = self.escape_name(catalog_u)
             schema = self.escape_name(schema_u)
