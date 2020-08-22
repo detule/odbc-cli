@@ -44,7 +44,7 @@ or, alternatively:
 python -m odbcli.__main__
 ```
 
-You may exit the client at any point by entering CTRL+q
+You may exit the client at any point by entering `[CTRL+q]`
 
 ### Connecting to databases
 
@@ -58,7 +58,9 @@ The client starts with the object browser visible to the right, where all the co
 
 ### The object browser
 
-This panel can be shown/hidden by using the CTRL+t key combination.  Initially, only the available connections are listed - these play the role of "root" nodes in a hierarchical tree of database objects.  You can navigate between these objects using the arrow keys:  in addition to the up and down keys, pressing the right arrow is equivalent to asking the object to "expand" and itemize enclosing objects, be it catalogs, schemas, or tables.   The left arrow equivalent to asking the object to "collapse" and hide its "children".  Therfore, when a connection is selected, pressing the right arrow will bring up a username/password connection dialog.  After succesfully connecting to the database, you can expand/collapse the connection, catalogs, schemas, and tables - expanding a table brings up information about its column structure.
+This panel can be shown/hidden by using the `[CTRL+t]` key combination.  Initially, only the available connections are listed - these play the role of "root" nodes in a hierarchical tree of database objects.  You can navigate between these objects using the arrow keys:  in addition to the up and down keys, pressing the right arrow is equivalent to asking the object to "expand" and itemize enclosing objects, be it catalogs, schemas, or tables.   The left arrow equivalent to asking the object to "collapse" and hide its "children".  Therfore, when a connection is selected, pressing the right arrow will bring up a username/password connection dialog.  After succesfully connecting to the database, you can expand/collapse the connection, catalogs, schemas, and tables - expanding a table brings up information about its column structure.
+
+This buffer is searchable - pressing the search key appropriate to your editing mode (vim or emacs) brings up a search bar at the top of the buffer that you can then use to zero-in on the particular table, for example, that you may be looking for.
 
 Pressing the left arrow when a connection that is collapsed is highlighted brings up a disconnect dialog.  Pressing the return key on connections that are connected allows you to toggle each of them as "active" - meaning, the one that queries in the main window are executed against.
 
@@ -72,19 +74,19 @@ You can preview table data - the equivalent of `SELECT *` by simply pressing ret
 
 ### The main query execution buffer
 
-Closing the object browser (CTRL + t) leaves you focused on the main buffer allowing you to execute statements against the currently active connection. After executing a query the results are piped to the system pager, or `less` if it is available.  If it is not, and there is no system pager configured, consider pip-installing `pypager`.
+Closing the object browser (`[CTRL+t]`) leaves you focused on the main buffer allowing you to execute statements against the currently active connection. After executing a query the results are piped to the system pager, or `less` if it is available.  If it is not, and there is no system pager configured, consider pip-installing `pypager`.
 
 This buffer sports both an as-you-type auto-completion, as well as suggestions drawn from the history file.
 
 ### Cancelling queries
 
-Outside of auto-completion queries, all statements are executed in a separate process, "executor".  Whether in the main execution buffer, or in the table preview, you should be able to cancel a long-running query by pressing CTRL+c.  At that point, the client will attempt to close and re-start the "executor" process.
+Outside of auto-completion queries, all statements are executed in a separate process, "executor".  Whether in the main execution buffer, or in the table preview, you should be able to cancel a long-running query by pressing `[CTRL+c]`.  At that point, the client will attempt to close and re-start the "executor" process.
 
 ### Configuring the client
 
 A limited set of configuration options are made available in the `config` file in the directory:
 
-* If the `XDG_CONFIG_HOME` environment variable is defined then within the in the `odbcli` sub-folder within.
+* If the `XDG_CONFIG_HOME` environment variable is defined then, within its `odbcli` sub-folder.
 * else, if the platform is `Windows`, tne in `os.getenv("USERPROFILE") + "\\AppData\\Local\\dbcli\\odbcli\\"`
 * Otherwise in `~/.config/odbcli/`
 
