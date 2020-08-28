@@ -70,7 +70,7 @@ Pressing the return key when a table or a view is highlighted in the object brow
 
 You can preview table contents - the equivalent of `SELECT *` - by simply pressing `return` while the cursor is in the filtering input buffer at the top of the preview window (equivalent to no filtering, and an unadulterated SELECT).  Repeatedly pressing the return key will page through the results.  In addition you can filter (or order) the output by entering a `WHERE ...` or similar qualifiers in the input buffer.  Tabing over to the `Done` button and pressing `return` will close the preview window.
 
-![odbc-cli tablepreview](https://github.com/detule/odbcli-screenshots/raw/master/odbcli-preview.gif)
+![odbc-cli tablepreview](https://github.com/detule/odbcli-screenshots/raw/master/odbcli-preview-new-slim.gif)
 
 ### The main query execution buffer
 
