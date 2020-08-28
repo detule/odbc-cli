@@ -186,7 +186,9 @@ class sqlConnection:
         res = []
         try:
             if self.conn.connected():
+                self.logger.debug("Calling list_catalogs...")
                 res = self.conn.list_catalogs()
+                self.logger.debug("list_catalogs: done")
         except DatabaseError as e:
             self.status = connStatus.ERROR
             self.logger.warning("list_catalogs: %s", str(e))
@@ -198,7 +200,9 @@ class sqlConnection:
 
         try:
             if self.conn.connected():
+                self.logger.debug("Calling list_schemas...")
                 res = self.conn.list_schemas()
+                self.logger.debug("list_schemas: done")
         except DatabaseError as e:
             self.status = connStatus.ERROR
             self.logger.warning("list_schemas: %s", str(e))
@@ -215,11 +219,13 @@ class sqlConnection:
 
         try:
             if self.conn.connected():
+                self.logger.debug("Calling find_tables...")
                 res = self.conn.find_tables(
                     catalog = catalog,
                     schema = schema,
                     table = table,
                     type = type)
+                self.logger.debug("find_tables: done")
         except DatabaseError as e:
             self.logger.warning("find_tables: %s.%s.%s, type %s: %s", catalog, schema, table, type, str(e))
 
@@ -235,11 +241,13 @@ class sqlConnection:
 
         try:
             if self.conn.connected():
+                self.logger.debug("Calling find_columns...")
                 res = self.conn.find_columns(
                         catalog = catalog,
                         schema = schema,
                         table = table,
                         column = column)
+                self.logger.debug("find_columns: done")
         except DatabaseError as e:
             self.logger.warning("find_columns: %s.%s.%s, column %s: %s", catalog, schema, table, column, str(e))
 
