@@ -418,7 +418,10 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             pass
 
     search_buffer = Buffer(name = "sidebarsearchbuffer")
-    search_field = SearchToolbar(search_buffer = search_buffer)
+    search_field = SearchToolbar(
+        search_buffer = search_buffer,
+        ignore_case = True
+    )
     sidebar_buffer = Buffer(
         name = "sidebarbuffer",
         read_only = True,
