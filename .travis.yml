@@ -1,0 +1,28 @@
+language: minimal
+
+jobs:
+  include:
+    - os: linux
+      addons:
+        apt:
+          packages:
+            - unixodbc
+            - unixodbc-dev
+            - libsqliteodbc
+      env:
+        - PYTHONVER=3.8
+        - CONDASCRIPT=Miniconda3-latest-Linux-x86_64.sh
+
+
+before_install:
+  - wget https://repo.continuum.io/miniconda/${CONDASCRIPT} -O ~/miniconda.sh
+  - bash ~/miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda create -q -y -n mypy python=${PYTHONVER}
+  - source $HOME/miniconda/bin/activate mypy
+  - python -m pip install --upgrade pip
+
+script:
+  - cd $TRAVIS_BUILD_DIR
+  - pip install .
+  - python setup.py sdist
