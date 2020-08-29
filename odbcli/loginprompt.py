@@ -5,7 +5,7 @@ from prompt_toolkit.widgets import TextArea
 from prompt_toolkit.layout.containers import HSplit, ConditionalContainer, WindowAlign, Window
 from prompt_toolkit.filters import is_done
 from cyanodbc import ConnectError, DatabaseError, SQLGetInfo
-from .conn import connWrappers
+from .conn import connWrappers, sqlConnection
 from .filters import ShowLoginPrompt
 
 def login_prompt(my_app: "sqlApp"):
@@ -18,7 +18,8 @@ def login_prompt(my_app: "sqlApp"):
             # Query the type of back-end and instantiate an appropriate class
             dbms = obj.conn.get_info(SQLGetInfo.SQL_DBMS_NAME)
             # Now clone object
-            newConn = connWrappers[dbms](
+            cls = connWrappers[dbms] if dbms in connWrappers.keys() else sqlConnection
+            newConn = cls(
                     dsn = obj.conn.dsn,
                     conn = obj.conn.conn,
                     username = obj.conn.username,
