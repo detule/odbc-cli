@@ -86,8 +86,12 @@ class sqlConnection:
             self.password = pwd
             conn_str = conn_str + "PWD=" + pwd + ";"
         if force or not self.conn.connected():
-            self.conn = connect(dsn = conn_str, timeout = 5)
-            self.status = connStatus.IDLE
+            try:
+                self.conn = connect(dsn = conn_str, timeout = 5)
+                self.status = connStatus.IDLE
+            except ConnectError as e:
+                self.logger.error("Error while connecting: %s", str(e))
+                raise ConnectError(e)
         if start_executor:
             self.executor = Process(
                     target = executor_process,
@@ -359,3 +363,4 @@ class MySQL(sqlConnection):
 connWrappers["MySQL"] = MySQL
 connWrappers["Microsoft SQL Server"] = MSSQL
 connWrappers["SQLite"] = sqlConnection
+connWrappers["PostgreSQL"] = sqlConnection

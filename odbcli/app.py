@@ -16,6 +16,9 @@ from .config import get_config, config_location, ensure_dir_exists
 from .odbcstyle import style_factory
 from .layout import sqlAppLayout
 
+class ExitEX(Exception):
+    pass
+
 class sqlApp:
     def __init__(
         self,
@@ -143,7 +146,7 @@ class sqlApp:
         @kb.add("c-q")
         def _(event):
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
-            event.app.exit(exception = EOFError, style="class:exiting")
+            event.app.exit(exception = ExitEX(), style="class:exiting")
         # Global key bindings.
         @kb.add("tab", filter = Condition(lambda: self.show_preview or self.show_login_prompt))
         def _(event):

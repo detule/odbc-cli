@@ -10,7 +10,7 @@ from cyanodbc import DatabaseError, datasources
 from click import echo_via_pager, secho
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.utils import get_cwidth
-from .app import sqlApp
+from .app import sqlApp, ExitEX
 from .layout import sqlAppLayout
 from .conn import connStatus
 from .executor import cmsg, commandStatus
@@ -23,8 +23,8 @@ def main():
     while True:
         try:
             app_res = my_app.application.run()
-        except EOFError:
-            for i in range(len(my_app.obj_list) - 1):
+        except ExitEX:
+            for i in range(len(my_app.obj_list)):
                 my_app.obj_list[i].conn.close()
             return
         else:
