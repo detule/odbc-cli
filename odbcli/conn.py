@@ -325,6 +325,45 @@ class MSSQL(sqlConnection):
             qry = "SELECT" + qry
         return qry
 
+class PSSQL(sqlConnection):
+    def find_tables(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            type = "") -> list:
+        """ At least the psql odbc driver I am using has an annoying habbit
+            of treating the catalog and schema fields interchangible, which
+            in turn screws up with completion"""
+
+        if not catalog == self.current_catalog():
+            return []
+
+        return super().find_tables(
+                catalog = catalog,
+                schema = schema,
+                table = table,
+                type = type)
+
+    def find_columns(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            column = "") -> list:
+        """ At least the psql odbc driver I am using has an annoying habbit
+            of treating the catalog and schema fields interchangible, which
+            in turn screws up with completion"""
+
+        if not catalog == self.current_catalog():
+            return []
+
+        return super().find_columns(
+                catalog = catalog,
+                schema = schema,
+                table = table,
+                column = column)
+
 class MySQL(sqlConnection):
     def find_tables(
             self,
@@ -363,4 +402,4 @@ class MySQL(sqlConnection):
 connWrappers["MySQL"] = MySQL
 connWrappers["Microsoft SQL Server"] = MSSQL
 connWrappers["SQLite"] = sqlConnection
-connWrappers["PostgreSQL"] = sqlConnection
+connWrappers["PostgreSQL"] = PSSQL
