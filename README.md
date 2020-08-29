@@ -11,6 +11,7 @@ Beyond these, some distinguishing features of **odbc-cli** are:
 - **Multi DBMS support**:  In addition to supporting connections to multiple DBMS, with **odbc-cli** you can connect to, and query multiple databases in the same session.
 - **An integrated object browser**: Navigate between connections and objects within a database.
 - **Small footprint and excellent performance**: One of the main motivations is to reduce both the on-disk, as well as in-memory footprint of the [existing Microsoft SQL Server client](https://github.com/dbcli/mssql-cli/), while at the same time improve query execution, and time spent retrieving results.
+- **Out-of-database auto-completion**: Mostly relevant to SQL Server users, but auto-completion is "aware" of schema and table structure outside of the currently connected catalog / database.
 
 ![odbc-cli objectbrowser](https://github.com/detule/odbcli-screenshots/raw/master/odbcli-basic.gif)
 
@@ -94,14 +95,41 @@ TODO: Document the options here in the readme.
 
 ## Supported DBMS
 
-* Microsoft SQL Server
+I have had a chance to test connectivity and basic functionality to the following DBM Systems:
 
-* MySQL
+* **Microsoft SQL Server**
+  Support and usability here should be furthest along.  While I encounter (and fix) an occasional issue, I use this client in this capacity daily.
 
-* SQLite
+  Driver notes:
+  * OEM Driver: No known issues (I test with driver version 17.5).
+  * FreeTDS: Please use version 1.2 or newer for optimal performance (older versions do not support the SQLColumns API endpoint applied to tables out-of-currently-connected-catalog).
 
-* PostgreSQL
+* **MySQL**
+  I have had a chance to test connectivity and basic functionality, but contributor help very much appreciated.
 
-TODO: Document in greater detail which features are working for which DBMS.
+* **SQLite**
+  I have had a chance to test connectivity and basic functionality, but contributor help very much appreciated.
+
+* **PostgreSQL**
+  I have had a chance to test connectivity and basic functionality, but contributor help very much appreciated.
+
+  Driver notes:
+  * Please consider using [psqlODBC 12.01](https://odbc.postgresql.org/docs/release.html) or newer for optimal performance (older versions, when used with a PostgreSQL 12.0, seem to have a documented bug when calling into SQLColumns).
+
+* **Other** DMB Systems with ODBC drivers not mentioned above should work with minimal, or hopefully no additional, configuration / effort.
+
+## Reporting issues
+
+The best feature - multi DBMS support, is also a curse from a support perspective, as there are too-many-to-count combinations of:
+
+* Client platform (ex: Debian 10)
+* Data base system (ex: SQL Server)
+* Data base version (ex: 19)
+* ODBC driver manager (ex: unixODBC)
+* ODBC driver manager version (ex: 2.3.x)
+* ODBC driver (ex: FreeTDS)
+* ODBC driver version (ex: 1.2.3)
+
+that could be specific to your setup, contributing to the problem and making it difficult to replicate.  Please consider including all of this information when reporting the issue, but above all be prepared that I may not be able to replicate and fix your issue (and therefore, hopefully you can contribute / code-up a solution).  Since the use case for this client is so broad, the only way I see this project having decent support is if we build up a critical mass of user/developers.
 
 Further details forthcoming ...
