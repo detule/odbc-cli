@@ -27,7 +27,7 @@ python -m pip install odbcli
 
 Notes:
 * In theory, this package should work under Windows, MacOS, as well as Linux.  I can only test Linux; help testing and developing on the other platforms (as well as Linux) is very much welcome.
-* The main supporting package, [**cyanodbc**](https://github.com/cyanodbc/cyanodbc) comes as a pre-compiled wheel.  It requires a modern C++ library supporting the C++14 standard.  The cyanodbc linux wheel is built on Ubuntu 16 - not exactly bleeding edge.  Anything newer should be fine.
+* The main supporting package, [**cyanodbc**](https://github.com/cyanodbc/cyanodbc) comes as a pre-compiled wheel.  It requires a modern C++ library supporting the C++14 standard.  The cyanodbc Linux wheel is built on Ubuntu 16 - not exactly bleeding edge.  Anything newer should be fine.
 
 ## Usage
 
@@ -59,7 +59,7 @@ The client starts with the object browser visible to the right, listing all the 
 
 ### The object browser
 
-This panel can be shown/hidden by using the `[CTRL+t]` key combination.  Initially, only the available connections are listed - these play the role of "root" nodes in a hierarchical tree of database objects.  You can navigate between these objects using the arrow keys:  in addition to the up and down keys, pressing the right arrow is equivalent to asking the object to "expand" and itemize enclosing objects, be it catalogs, schemas, or tables.   Pressing the left arrow whilst in the object browser is equivalent to asking the object to "collapse" and hide its "children".  Therfore, when a connection is selected, pressing the right arrow will bring up a username/password connection dialog.  After succesfully connecting to the database, you can expand/collapse the connection, catalogs, schemas, and tables - expanding a table brings up information about its column structure.
+This panel can be shown/hidden by using the `[CTRL+t]` key combination.  Initially, only the available connections are listed - these play the role of "root" nodes in a hierarchical tree of database objects.  You can navigate between these objects using the arrow keys:  in addition to the up and down keys, pressing the right arrow is equivalent to asking the object to "expand" and itemize enclosing objects, be it catalogs, schemas, or tables.   Pressing the left arrow whilst in the object browser is equivalent to asking the object to "collapse" and hide its "children".  Therefore, when a connection is selected, pressing the right arrow will bring up a username/password connection dialog.  After successfully connecting to the database, you can expand/collapse the connection, catalogs, schemas, and tables - expanding a table brings up information about its column structure.
 
 This buffer is searchable - pressing the search key appropriate to your editing mode (vim or emacs) brings up a search bar at the top of the buffer that you can then use to zero-in on the particular table, for example, that you may be looking for.
 
@@ -69,7 +69,7 @@ Pressing the left arrow when a connection that is fully collapsed is highlighted
 
 Pressing the return key when a table or a view is highlighted in the object browser, brings up the preview window.  There are three elements in this window: the input/filtering buffer, the `Done` button, and the main output buffer.  Pressing the `tab` button will toggle the focus between these three elements.
 
-You can preview table contents - the equivalent of `SELECT *` - by simply pressing `return` while the cursor is in the filtering input buffer at the top of the preview window (equivalent to no filtering, and an unadulterated SELECT).  Repeatedly pressing the return key will page through the results.  In addition you can filter (or order) the output by entering a `WHERE ...` or similar qualifiers in the input buffer.  Tabing over to the `Done` button and pressing `return` will close the preview window.
+You can preview table contents - the equivalent of `SELECT *` - by simply pressing `return` while the cursor is in the filtering input buffer at the top of the preview window (equivalent to no filtering, and an unadulterated SELECT).  Repeatedly pressing the return key will page through the results.  In addition you can filter (or order) the output by entering a `WHERE ...` or similar qualifiers in the input buffer.  Tab-ing over to the `Done` button and pressing `return` will close the preview window.
 
 ![odbc-cli tablepreview](https://github.com/detule/odbcli-screenshots/raw/master/odbcli-preview-new-slim.gif)
 
@@ -91,7 +91,7 @@ A limited set of configuration options are made available in the `config` file i
 * else, if the platform is `Windows`, then in `os.getenv("USERPROFILE") + "\\AppData\\Local\\dbcli\\odbcli\\"`
 * Otherwise in `~/.config/odbcli/`
 
-TODO: Document the options here in the readme.
+TODO: Document the options here in the README.
 
 ## Supported DBMS
 
@@ -131,5 +131,9 @@ The best feature - multi DBMS support, is also a curse from a support perspectiv
 * ODBC driver version (ex: 1.2.3)
 
 that could be specific to your setup, contributing to the problem and making it difficult to replicate.  Please consider including all of this information when reporting the issue, but above all be prepared that I may not be able to replicate and fix your issue (and therefore, hopefully you can contribute / code-up a solution).  Since the use case for this client is so broad, the only way I see this project having decent support is if we build up a critical mass of user/developers.
+
+## Acknowledgements
+
+This project would not be possible without the most excellent [python prompt toolkit library](https://github.com/prompt-toolkit/python-prompt-toolkit).  In addition, idea and code sharing between the [clients that leverage this library](https://github.com/dbcli/) is rampant, and this project is no exception - a big thanks to all the `dbcli` contributors.
 
 Further details forthcoming ...
