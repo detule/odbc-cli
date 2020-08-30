@@ -502,7 +502,7 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             right_margins = [ScrollbarMargin(display_arrows = True)],
             style = "class:sidebar",
             width = Dimension.exact( 45 ),
-            height = Dimension(min = 15, preferred = 33),
+            height = Dimension(min = 7, preferred = 33),
             scroll_offsets = ScrollOffsets(top = 1, bottom = 1)),
         Window(style="class:sidebar,separator", height=1),
         sql_sidebar_navigation()])

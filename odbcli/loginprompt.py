@@ -76,7 +76,7 @@ def login_prompt(my_app: "sqlApp"):
                 ],
                 padding=D(preferred=1, max=1),
             ),
-            width = D(min = 20, preferred = 50),
+            width = D(min = 10, preferred = 50),
             buttons=[ok_button, cancel_button],
             with_background = False
     )
