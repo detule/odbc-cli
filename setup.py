@@ -16,7 +16,7 @@ install_requirements = [
 
 setuptools.setup(
     name = "odbcli", # Replace with your own username
-    version = "0.0.2",
+    version = "0.0.3",
     author = "Oliver Gjoneski",
     author_email = "ogjoneski@gmail.com",
     description = "ODBC Client",
