@@ -31,11 +31,11 @@ View = namedtuple('View', ['catalog', 'schema', 'table_refs'])
 # JoinConditions are suggested after ON, e.g. 'foo.barid = bar.barid'
 JoinCondition = namedtuple('JoinCondition', ['table_refs', 'parent'])
 # Joins are suggested after JOIN, e.g. 'foo ON foo.barid = bar.barid'
-Join = namedtuple('Join', ['table_refs', 'schema'])
+Join = namedtuple('Join', ['table_refs', 'schema', 'catalog'])
 
-Function = namedtuple('Function', ['schema', 'table_refs', 'usage'])
+Function = namedtuple('Function', ['catalog', 'schema', 'table_refs', 'usage'])
 # For convenience, don't require the `usage` argument in Function constructor
-Function.__new__.__defaults__ = (None, tuple(), None)
+Function.__new__.__defaults__ = (None, None, tuple(), None)
 Table.__new__.__defaults__ = (None, None, tuple(), tuple())
 View.__new__.__defaults__ = (None, None, tuple())
 FromClauseItem.__new__.__defaults__ = (None, None, tuple(), tuple())
@@ -427,8 +427,7 @@ def suggest_based_on_last_token(token, stmt):
     if (token_v.endswith('join') and token.is_keyword) or \
          token_v in ('copy', 'from', 'update', 'into', 'describe', 'truncate'):
 
-        ancestors = stmt.get_identifier_parents()
-        schema = stmt.get_identifier_schema()
+        catalog, schema = stmt.get_identifier_parents()
         tables = extract_tables(stmt.text_before_cursor)
         is_join = token_v.endswith('join') and token.is_keyword
 
@@ -436,27 +435,32 @@ def suggest_based_on_last_token(token, stmt):
         # public schema if no schema has been specified
         suggest = []
 
-        if not any(ancestors):
+        if catalog is None and schema is None:
             suggest.insert(0, Database())
             suggest.append(Schema())
-        elif not ancestors[0]:
-            suggest.insert(0, Schema(parent = ancestors[1]))
+        elif not catalog:
+            suggest.insert(0, Schema(parent = schema))
         if token_v == 'from' or is_join:
-            suggest.append(FromClauseItem(grandparent = ancestors[0],
-                                          parent=ancestors[1],
+            suggest.append(FromClauseItem(grandparent = catalog,
+                                          parent = schema,
                                           table_refs=tables,
                                           local_tables=stmt.local_tables))
         elif token_v == 'truncate':
-            suggest.append(Table(schema))
+            suggest.append(Table(catalog, schema))
         else:
-            suggest.extend((Table(schema), View(schema)))
+            suggest.extend((Table(catalog, schema), View(catalog, schema)))
 
+        # TODO: Join(catalog = catalog, ...)
         if is_join and _allow_join(stmt.parsed):
             tables = stmt.get_tables('before')
-            suggest.append(Join(table_refs=tables, schema=schema))
+            suggest.append(Join(
+                table_refs = tables,
+                schema=schema,
+                catalog = catalog))
 
         return tuple(suggest)
 
+    # TODO: Use get_identifier_parents
     if token_v == 'function':
         schema = stmt.get_identifier_schema()
         # stmt.get_previous_token will fail for e.g. `SELECT 1 FROM functions
@@ -475,10 +479,16 @@ def suggest_based_on_last_token(token, stmt):
             'table': Table,
             'view': View,
             'function': Function}[token_v]
-        schema = stmt.get_identifier_schema()
-        if schema:
-            return (rel_type(schema=schema),)
-        return (Schema(), rel_type(schema=schema))
+        catalog, schema = stmt.get_identifier_parents()
+        suggest = []
+        if catalog is None and schema is None:
+            suggest.insert(0, Database())
+            suggest.append(Schema())
+        elif not catalog:
+            suggest.insert(0, Schema(parent = schema))
+        suggest.append(rel_type(catalog = catalog, schema = schema))
+
+        return suggest
 
     if token_v == 'column':
         # E.g. 'ALTER TABLE foo ALTER COLUMN bar
@@ -528,6 +538,7 @@ def suggest_based_on_last_token(token, stmt):
         #   SELECT foo::bar
         # Note that tables are a form of composite type in postgresql, so
         # they're suggested here as well
+        # TODO: Use get_identifier_parents
         schema = stmt.get_identifier_schema()
         suggestions = [Datatype(schema=schema),
                        Table(schema=schema)]
