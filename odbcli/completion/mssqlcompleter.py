@@ -580,9 +580,10 @@ class MssqlCompleter(Completer):
             aliases = (tbl + str(i) for i in count(2))
         return next(a for a in aliases if normalize_ref(a) not in tbls)
 
+    # TODO: Need to account for suggestion.catalog, tbls.catalog etc
     def get_join_matches(self, suggestion, word_before_cursor):
         tbls = suggestion.table_refs
-        cols = self.populate_scoped_cols(tbls)
+        cols = self.populate_scoped_cols2(tbls)
         # Set up some data structures for efficient access
         qualified = dict((normalize_ref(t.ref), t.schema) for t in tbls)
         ref_prio = dict((normalize_ref(t.ref), n) for n, t in enumerate(tbls))
@@ -677,6 +678,7 @@ class MssqlCompleter(Completer):
 
         return self.find_matches(word_before_cursor, conds, meta='join')
 
+    # TODO: Need to account for suggestion.catalog
     def get_function_matches(
             self, suggestion, word_before_cursor, alias=False):
         if suggestion.usage == 'from':
