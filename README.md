@@ -83,6 +83,21 @@ The best feature - multi DBMS support, is also a curse from a support perspectiv
 
 that could be specific to your setup, contributing to the problem and making it difficult to replicate.  Please consider including all of this information when reporting the issue, but above all be prepared that I may not be able to replicate and fix your issue (and therefore, hopefully you can contribute / code-up a solution).  Since the use case for this client is so broad, the only way I see this project having decent support is if we build up a critical mass of user/developers.
 
+## Troubleshooting
+
+### Connecting to databases
+
+The best way to resolve connectivity issues is to work directly in a python console.  In particular, try working directly with the `cyanodbc` package in an interactive session.
+
+If for example, you are attempting to connect to a DSN called `postgresql_db` - recall this should be defined and configured in the INI configuration file appropriate to your driver manager, in the background, **odbc-cli** attempts to establish a connection with a connection string similar to:
+
+```
+import cyanodbc
+conn = cyanodbc.connect("DSN=postgresql_db;UID=postgres;PWD=password")
+```
+
+If experiencing issues connecting to a database, make sure you can establish a connection using the method above, before moving on to troubleshoot other parts of the client.
+
 ## Acknowledgements
 
 This project would not be possible without the most excellent [python prompt toolkit library](https://github.com/prompt-toolkit/python-prompt-toolkit).  In addition, idea and code sharing between the [clients that leverage this library](https://github.com/dbcli/) is rampant, and this project is no exception - a big thanks to all the `dbcli` contributors.
