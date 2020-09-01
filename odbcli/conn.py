@@ -199,8 +199,13 @@ class sqlConnection:
 
         return res
 
-    def list_schemas(self) -> list:
+    def list_schemas(self, catalog = None) -> list:
         res = []
+
+        # We only trust this generic implementation if attempting to list
+        # schemata in curent catalog (or catalog argument is None)
+        if catalog is not None and not catalog == self.current_catalog():
+            return res
 
         try:
             if self.conn.connected():
@@ -313,6 +318,34 @@ class sqlConnection:
 connWrappers = {}
 
 class MSSQL(sqlConnection):
+
+    def list_schemas(self, catalog = None) -> list:
+        """ Optimization for listing out-of-database schemas by
+            always executing catalog specific sp_tables sproc.
+            Also since FreeTDS seems to return duplicates let's
+            use it for both in- and out-of-database listings """
+        res = []
+        qry = "EXEC {catalog}.dbo.sp_tables @table_name = '', @table_owner = '%', @table_qualifier = '', @table_type = ''"
+
+#        if catalog is None or catalog in [self.current_catalog(), self.sanitize_search_string(self.current_catalog())]:
+#            return super().list_schemas(catalog = catalog)
+        if catalog is None and self.current_catalog():
+            catalog = self.sanitize_search_string(self.current_catalog())
+
+        try:
+            crsr = self.execute(qry.format(catalog = catalog))
+            res = crsr.fetchall()
+            crsr.close()
+            schemas = []
+            for r in res:
+                schemas.append(r[1])
+            if len(schemas):
+                return schemas
+        except DatabaseError as e:
+            self.logger.warning("MSSQL list_schemas: %s", str(e))
+
+        return super().list_schemas(catalog = catalog)
+
     def mssql_preview_query(
             self,
             table,
@@ -365,6 +398,17 @@ class PSSQL(sqlConnection):
                 column = column)
 
 class MySQL(sqlConnection):
+
+    def list_schemas(self, catalog = None) -> list:
+        """ Only catalogs for MySQL, it seems,
+            however, list_schemas returns [""] which
+            causes blank entries to show up in auto
+            completion.  Also confuses some of the checks we have
+            that look for len(list_schemas) < 1 to decide whether
+            to fall-back to find_tables.  Make sure that for MySQL
+            we do, in-fact fall-back to find_tables"""
+        return []
+
     def find_tables(
             self,
             catalog = "",
