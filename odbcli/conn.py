@@ -5,6 +5,7 @@ from cli_helpers.tabular_output import TabularOutputFormatter
 from multiprocessing import Process, Pipe
 from logging import getLogger
 from re import sub
+from threading import Lock
 from .executor import executor_process, cmsg, commandStatus
 
 formatter = TabularOutputFormatter()
@@ -37,6 +38,16 @@ class sqlConnection:
         self._quotechar = None
         self._search_escapechar = None
         self._search_escapepattern = None
+        # Lock to be held by database interaction that happens
+        # in the main process.  Recall, main-buffer as well as preview
+        # buffer queries get executed in a separate process, however
+        # auto-completion, as well as object browser expansion happen
+        # in the main process possibly multi-threaded.  Multi threaded is fine
+        # we don't want the main process to lock-up while writing a query,
+        # however, we don't want to potentially hammer the connection with
+        # multiple auto-completion result queries before each has had a chance
+        # to return.
+        self._lock = Lock()
 
     @property
     def quotechar(self) -> str:
@@ -179,9 +190,10 @@ class sqlConnection:
         return res
 
     def execute(self, query, parameters = None) -> Cursor:
-        self.cursor = self.conn.cursor()
-        self.cursor.execute(query, parameters)
-        self.query = query
+        with self._lock:
+            self.cursor = self.conn.cursor()
+            self.cursor.execute(query, parameters)
+            self.query = query
         return self.cursor
 
     def list_catalogs(self) -> list:
@@ -191,7 +203,8 @@ class sqlConnection:
         try:
             if self.conn.connected():
                 self.logger.debug("Calling list_catalogs...")
-                res = self.conn.list_catalogs()
+                with self._lock:
+                    res = self.conn.list_catalogs()
                 self.logger.debug("list_catalogs: done")
         except DatabaseError as e:
             self.status = connStatus.ERROR
@@ -210,7 +223,8 @@ class sqlConnection:
         try:
             if self.conn.connected():
                 self.logger.debug("Calling list_schemas...")
-                res = self.conn.list_schemas()
+                with self._lock:
+                    res = self.conn.list_schemas()
                 self.logger.debug("list_schemas: done")
         except DatabaseError as e:
             self.status = connStatus.ERROR
@@ -229,11 +243,12 @@ class sqlConnection:
         try:
             if self.conn.connected():
                 self.logger.debug("Calling find_tables...")
-                res = self.conn.find_tables(
-                    catalog = catalog,
-                    schema = schema,
-                    table = table,
-                    type = type)
+                with self._lock:
+                    res = self.conn.find_tables(
+                        catalog = catalog,
+                        schema = schema,
+                        table = table,
+                        type = type)
                 self.logger.debug("find_tables: done")
         except DatabaseError as e:
             self.logger.warning("find_tables: %s.%s.%s, type %s: %s", catalog, schema, table, type, str(e))
@@ -251,11 +266,12 @@ class sqlConnection:
         try:
             if self.conn.connected():
                 self.logger.debug("Calling find_columns...")
-                res = self.conn.find_columns(
-                        catalog = catalog,
-                        schema = schema,
-                        table = table,
-                        column = column)
+                with self._lock:
+                    res = self.conn.find_columns(
+                            catalog = catalog,
+                            schema = schema,
+                            table = table,
+                            column = column)
                 self.logger.debug("find_columns: done")
         except DatabaseError as e:
             self.logger.warning("find_columns: %s.%s.%s, column %s: %s", catalog, schema, table, column, str(e))
