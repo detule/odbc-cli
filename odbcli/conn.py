@@ -369,7 +369,7 @@ class PSSQL(sqlConnection):
             of treating the catalog and schema fields interchangible, which
             in turn screws up with completion"""
 
-        if not catalog == self.current_catalog():
+        if not catalog in [self.current_catalog(), self.sanitize_search_string(self.current_catalog())]:
             return []
 
         return super().find_tables(
@@ -388,7 +388,7 @@ class PSSQL(sqlConnection):
             of treating the catalog and schema fields interchangible, which
             in turn screws up with completion"""
 
-        if not catalog == self.current_catalog():
+        if not catalog in [self.current_catalog(), self.sanitize_search_string(self.current_catalog())]:
             return []
 
         return super().find_columns(
