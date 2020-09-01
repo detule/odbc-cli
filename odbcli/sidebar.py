@@ -372,12 +372,11 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             name_trim = ("%-" + str(24 - 2 * obj.level) + "s") % obj.name
 
         tokens.append(
-            ("class:sidebar.status" + sel, " " * 2 * obj.level, expand_item)
+            ("class:sidebar.label" + sel, " " * 2 * obj.level, expand_item)
         )
-        tokens.append(("class:sidebar" + sel, " >" if selected else "  "))
+        tokens.append(("class:sidebar.label" + sel, " >" if selected else "  "))
         tokens.append(
             ("class:sidebar.label" + sel + act,
-#                ("%-" + str(24 - 2 * obj.level) + "s") % obj.name,
             name_trim,
             expand_item)
         )
