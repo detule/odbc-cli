@@ -171,15 +171,19 @@ class myDBCatalog(myDBObject):
         if self.children is not None:
             return None
 
-        res = self.conn.find_tables(
-                catalog = self.conn.sanitize_search_string(self.name),
-                schema = "",
-                table = "",
-                type = "")
         schemas = []
-        for r in res:
-            if (r.schema not in schemas and r.schema != ""):
-                schemas.append(r.schema)
+        schemas = self.conn.list_schemas(
+                catalog = self.conn.sanitize_search_string(self.name))
+
+        if len(schemas) < 1:
+            res = self.conn.find_tables(
+                    catalog = self.conn.sanitize_search_string(self.name),
+                    schema = "",
+                    table = "",
+                    type = "")
+            for r in res:
+                if (r.schema not in schemas and r.schema != ""):
+                    schemas.append(r.schema)
         if len(schemas):
             lst = [myDBSchema(
                 conn = self.conn,
@@ -191,7 +195,7 @@ class myDBCatalog(myDBObject):
             return None
 
         # No schemas found; but if there are tables then these are direct
-        # descendents
+        # descendents, i.e. MySQL
         lst = [myDBTable(
             conn = self.conn,
             name = table.name,

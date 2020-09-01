@@ -713,10 +713,11 @@ class MssqlCompleter(Completer):
         return matches
 
     def get_schema_matches(self, suggestion, word_before_cursor):
+        conn = self.my_app.active_conn
         if suggestion.parent:
             catalog_u = self.unescape_name(suggestion.parent)
         else:
-            catalog_u = self.my_app.active_conn.current_catalog()
+            catalog_u = conn.current_catalog()
 
         catalog_e = self.escape_name(catalog_u)
         cats = self.dbmetadata['table'].keys()
@@ -726,18 +727,24 @@ class MssqlCompleter(Completer):
             schema_names_e = self.dbmetadata['table'][catalog_e].keys()
         else: 
             if suggestion.parent:
-                conn = self.my_app.active_conn
-                res = self.my_app.active_conn.find_tables(
-                        catalog = conn.sanitize_search_string(catalog_u),
-                        schema = "",
-                        table = "",
-                        type = "")
+                # Looking for schemas in a specified catalog
                 schema_names = []
-                for r in res:
-                    if (r.schema not in schema_names and r.schema != ""):
-                        schema_names.append(r.schema)
+                # Attempt list_schemas
+                schema_names = conn.list_schemas(
+                        catalog = conn.sanitize_search_string(catalog_u))
+
+                if len(schema_names) < 1:
+                    res = conn.find_tables(
+                            catalog = conn.sanitize_search_string(catalog_u),
+                            schema = "",
+                            table = "",
+                            type = "")
+                    for r in res:
+                        if (r.schema not in schema_names and r.schema != ""):
+                            schema_names.append(r.schema)
             else:
-                schema_names = set(self.my_app.active_conn.list_schemas())
+                # Looking for schemas in current catalog
+                schema_names = set(conn.list_schemas())
             
             schema_names_e = self.escaped_names(schema_names)
             if len(schema_names_e):
