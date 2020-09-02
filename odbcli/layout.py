@@ -51,7 +51,7 @@ def get_inputmode_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
     if False:
         result.extend(to_formatted_text(my_app.title))
 
-    append((input_mode_t, "[C-f] ", toggle_vi_mode))
+    append((input_mode_t, "[F-4] ", toggle_vi_mode))
 
     # InputMode
     if my_app.vi_mode:
@@ -121,6 +121,31 @@ def get_connection_fragments(my_app: "sqlApp") -> StyleAndTextTuples:
     append((token, " " + status_text))
     return result
 
+def exit_confirmation(
+    my_app: "sqlApp", style = "class:exit-confirmation"
+) -> Container:
+    """
+    Create `Layout` for the exit message.
+    """
+
+    def get_text_fragments() -> StyleAndTextTuples:
+        # Show "Do you really want to exit?"
+        return [
+            (style, "\n %s ([y]/n)" % my_app.exit_message),
+            ("[SetCursorPosition]", ""),
+            (style, "  \n"),
+        ]
+
+    visible = ~is_done & Condition(lambda: my_app.show_exit_confirmation)
+
+    return ConditionalContainer(
+        content=Window(
+            FormattedTextControl(get_text_fragments), style=style
+        ),
+        filter=visible,
+    )
+
+
 
 def status_bar(my_app: "sqlApp") -> Container:
     """
@@ -146,9 +171,7 @@ def status_bar(my_app: "sqlApp") -> Container:
         filter=~is_done
         & renderer_height_is_known
         & Condition(
-#            lambda: python_input.show_status_bar
-#            and not python_input.show_exit_confirmation
-            lambda: True
+            lambda: not my_app.show_exit_confirmation
         ),
     )
 
@@ -241,6 +264,11 @@ class sqlAppLayout:
                         Float(
                             content = self.disconnect_dialog,
                             ),
+                        Float(
+                            left = 2,
+                            bottom = 1,
+                            content = exit_confirmation(self.my_app)
+                        ),
                         Float(
                             xcursor = True,
                             ycursor = True,

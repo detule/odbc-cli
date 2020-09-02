@@ -3,6 +3,7 @@ import os
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 from prompt_toolkit.enums import EditingMode
 from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
+from prompt_toolkit.keys import Keys
 from prompt_toolkit.key_binding.bindings.auto_suggest import load_auto_suggest_bindings
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding.bindings.focus import focus_next
@@ -34,6 +35,9 @@ class sqlApp:
         self.cli_style = c["colors"]
         self.multiline: bool = c["main"].as_bool("multi_line")
         self.min_num_menu_lines = c["main"].as_int("min_num_menu_lines")
+
+        self.show_exit_confirmation: bool = False
+        self.exit_message: str = "Do you really want to exit?"
 
         self.show_sidebar: bool = True
         self.show_login_prompt: bool = False
@@ -143,15 +147,35 @@ class sqlApp:
     def _create_application(self) -> Application:
         self.sql_layout = sqlAppLayout(my_app = self)
         kb = KeyBindings()
+
+        confirmation_visible = Condition(lambda: self.show_exit_confirmation)
         @kb.add("c-q")
         def _(event):
             " Pressing Ctrl-Q or Ctrl-C will exit the user interface. "
+            self.show_exit_confirmation = True
+
+        @kb.add("y", filter=confirmation_visible)
+        @kb.add("Y", filter=confirmation_visible)
+        @kb.add("enter", filter=confirmation_visible)
+        @kb.add("c-q", filter=confirmation_visible)
+        def _(event):
+            """
+            Really quit.
+            """
             event.app.exit(exception = ExitEX(), style="class:exiting")
+
+        @kb.add(Keys.Any, filter=confirmation_visible)
+        def _(event):
+            """
+            Cancel exit.
+            """
+            self.show_exit_confirmation = False
+
         # Global key bindings.
         @kb.add("tab", filter = Condition(lambda: self.show_preview or self.show_login_prompt))
         def _(event):
             event.app.layout.focus_next()
-        @kb.add("c-f")
+        @kb.add("f4")
         def _(event):
             " Toggle between Emacs and Vi mode. "
             self.vi_mode = not self.vi_mode

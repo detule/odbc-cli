@@ -15,6 +15,7 @@ from prompt_toolkit.layout.margins import ScrollbarMargin
 from prompt_toolkit.mouse_events import MouseEvent
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import SearchToolbar
+from prompt_toolkit.filters import Condition
 from .conn import sqlConnection
 from .filters import ShowSidebar
 from .utils import if_mousedown
@@ -275,8 +276,11 @@ def sql_sidebar_help(my_app: "sqlApp"):
         content=Window(
             FormattedTextControl(get_help_text), style=token, height=Dimension(min=3)
             ),
-        filter=ShowSidebar(my_app) & ~is_done,
-        )
+        filter = ~is_done
+        & ShowSidebar(my_app)
+        & Condition(
+            lambda: not my_app.show_exit_confirmation
+        ))
 
 def sql_sidebar_navigation():
     """
@@ -345,6 +349,9 @@ def show_sidebar_button_info(my_app: "sqlApp") -> Container:
                 width=Dimension.exact(width),
                 ),
             filter=~is_done
+            & Condition(
+                lambda: not my_app.show_exit_confirmation
+            )
 #            & renderer_height_is_known
             )
 
