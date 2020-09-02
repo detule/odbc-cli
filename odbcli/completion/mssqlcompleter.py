@@ -1095,12 +1095,35 @@ class MssqlCompleter(Completer):
 
         """
         ret = []
+        conn = self.my_app.active_conn
         if catalog is None and schema is None:
-            # fixme: need to fix this for sqlite where this is perfectly ok
+            # Query free tables, no catalog or schema (think SQLite)
+            # Trying to communicate here empty string, "" to
+            # SQLTables API.  Unfortunately, nanodbc intercepts these
+            # and translates them into nullptr which in turn are treated
+            # as wildcards per ODBC standard.  So try to work around the
+            # nanodbc intercept, and create an empty string as a
+            # null-terminated string without content.
+            res = conn.find_tables(
+                    catalog = "\x00",
+                    schema = "\x00",
+                    table = "",
+                    type = obj_type)
+
+            for r in res:
+                name_e = self.escape_name(r.name)
+                ret.append(
+                    SchemaObject(
+                        name = name_e,
+                        schema = "",
+                        catalog = ""
+                    )
+                )
+            # Don't expand dbmetadata with free tables (for now)
             return ret
         if catalog is None:
             #Set to current catalog
-            catalog = self.my_app.active_conn.current_catalog()
+            catalog = conn.current_catalog()
         # Note to self, as soon as a period is inputted a schema (parent) is
         # no longer none.  Technically we should never be in a situation where
         # catalog is not None but schema is None.
@@ -1126,7 +1149,6 @@ class MssqlCompleter(Completer):
         else:
             self.logger.debug("populate_objects(%s): Did not find %s.%s metadata.  Will query.", obj_type, catalog_e, schema_e)
             obj_names = []
-            conn = self.my_app.active_conn
             res = conn.find_tables(
                     catalog = conn.sanitize_search_string(
                         self.unescape_name(catalog)),

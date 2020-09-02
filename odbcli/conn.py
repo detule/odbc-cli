@@ -334,6 +334,28 @@ class sqlConnection:
 connWrappers = {}
 
 class MSSQL(sqlConnection):
+    def find_tables(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            type = "") -> list:
+        """ FreeTDS does not allow us to query catalog == '', and
+            schema = '' which, according to the ODBC spec for SQLTables should
+            return tables outside of any catalog/schema.  In the case of FreeTDS
+            what gets passed to the sp_tables sproc is null, which in turn
+            is interpreted as a wildcard.  For the time being intercept
+            these queries here (used in auto completion) and return empty
+            set.  """
+
+        if catalog == "\x00" and schema == "\x00":
+            return []
+
+        return super().find_tables(
+                catalog = catalog,
+                schema = schema,
+                table = table,
+                type = type)
 
     def list_schemas(self, catalog = None) -> list:
         """ Optimization for listing out-of-database schemas by
@@ -459,7 +481,16 @@ class MySQL(sqlConnection):
                 table = table,
                 column = column)
 
+class SQLite(sqlConnection):
+
+    def list_schemas(self, catalog = None) -> list:
+        """Easy peasy"""
+        return []
+    def list_catalogs(self) -> list:
+        """Easy peasy"""
+        return []
+
 connWrappers["MySQL"] = MySQL
 connWrappers["Microsoft SQL Server"] = MSSQL
-connWrappers["SQLite"] = sqlConnection
+connWrappers["SQLite"] = SQLite
 connWrappers["PostgreSQL"] = PSSQL
