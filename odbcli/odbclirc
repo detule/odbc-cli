@@ -112,6 +112,9 @@ sidebar.key = "bg:#bbddbb #000000 bold"
 sidebar.key.description = "bg:#bbbbbb #000000"
 sidebar.helptext = "bg:#fdf6e3 #000011"
 
+# Exit confirmation
+exit-confirmation = "bg:#884444 #ffffff"
+
 # style classes for colored table output
 output.header = "#00ff5f bold"
 output.odd-row = ""
