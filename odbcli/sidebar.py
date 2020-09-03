@@ -4,6 +4,7 @@ from cyanodbc import Connection
 from typing import List, Optional, Callable
 from logging import getLogger
 from asyncio import get_event_loop
+from threading import Thread
 from prompt_toolkit.layout.containers import HSplit, Window, ScrollOffsets, ConditionalContainer, Container
 from prompt_toolkit.formatted_text.base import StyleAndTextTuples
 from prompt_toolkit.formatted_text import fragment_list_width
@@ -61,12 +62,20 @@ class myDBObject:
         loop = get_event_loop()
         self.my_app.show_expanding_object = True
         self.my_app.application.invalidate()
-        def run():
-            self._expand_internal()
+        def _redraw_after_io():
+            """ Callback, scheduled after threaded I/O
+                completes """
             self.my_app.show_expanding_object = False
             self.my_app.application.invalidate()
 
-        loop.run_in_executor(None, run)
+        def _run():
+            """ Executes in a thread """
+            self._expand_internal() # Blocking I/O
+            loop.call_soon_threadsafe(_redraw_after_io)
+
+        # (Don't use 'run_in_executor', because daemon is ideal here.
+        t = Thread(target = _run, daemon = True)
+        t.start()
 
     def collapse(self) -> None:
         """
