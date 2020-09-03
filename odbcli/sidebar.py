@@ -3,6 +3,7 @@ import platform
 from cyanodbc import Connection
 from typing import List, Optional, Callable
 from logging import getLogger
+from asyncio import get_event_loop
 from prompt_toolkit.layout.containers import HSplit, Window, ScrollOffsets, ConditionalContainer, Container
 from prompt_toolkit.formatted_text.base import StyleAndTextTuples
 from prompt_toolkit.formatted_text import fragment_list_width
@@ -16,6 +17,7 @@ from prompt_toolkit.mouse_events import MouseEvent
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import SearchToolbar
 from prompt_toolkit.filters import Condition
+from prompt_toolkit.application import get_app
 from .conn import sqlConnection
 from .filters import ShowSidebar
 from .utils import if_mousedown
@@ -23,6 +25,7 @@ from .utils import if_mousedown
 class myDBObject:
     def __init__(
         self,
+        my_app: "sqlApp",
         conn: sqlConnection,
         name: str,
         otype: str,
@@ -32,6 +35,7 @@ class myDBObject:
         next_object: Optional["myDBObject"] = None
     ) -> None:
 
+        self.my_app = my_app
         self.conn = conn
         self.children = children
         self.parent = parent
@@ -42,11 +46,28 @@ class myDBObject:
         self.selected: bool = False
         self.logger = getLogger(__name__)
 
-    def expand(self) -> None:
+    def _expand_internal(self) -> None:
         """
         Populates children and sets parent for children nodes
         """
         raise NotImplementedError()
+
+    def expand(self) -> None:
+        """
+        Populates children and sets parent for children nodes
+        """
+        if self.children is not None:
+            return None
+
+        loop = get_event_loop()
+        self.my_app.show_expanding_object = True
+        get_app().invalidate()
+        def run():
+            self._expand_internal()
+            self.my_app.show_expanding_object = False
+            get_app().invalidate()
+
+        loop.run_in_executor(None, run)
 
     def collapse(self) -> None:
         """
@@ -112,13 +133,11 @@ class myDBObject:
         return None
 
 class myDBColumn(myDBObject):
-    def expand(self) -> None:
-        self.children = None
+    def _expand_internal(self) -> None:
+        return None
 
 class myDBTable(myDBObject):
-    def expand(self) -> None:
-        if self.children is not None:
-            return None
+    def _expand_internal(self) -> None:
         cat = "%"
         schema = "%"
         # https://docs.microsoft.com/en-us/sql/odbc/reference/syntax/sqlcolumns-function?view=sql-server-ver15
@@ -140,6 +159,7 @@ class myDBTable(myDBObject):
                 column = "%")
 
         lst = [myDBColumn(
+            my_app = self.my_app,
             conn = self.conn,
             name = col.column,
             otype = col.type_name,
@@ -148,10 +168,11 @@ class myDBTable(myDBObject):
         if len(lst):
             self.add_children(list_obj = lst)
 
+        return None
+
 class myDBSchema(myDBObject):
-    def expand(self) -> None:
-        if self.children is not None:
-            return None
+    def _expand_internal(self) -> None:
+
         cat = self.conn.sanitize_search_string(self.parent.name) if self.parent is not None else "%"
         res = self.conn.find_tables(
                 catalog = cat,
@@ -159,6 +180,7 @@ class myDBSchema(myDBObject):
                 table = "",
                 type = "")
         lst = [myDBTable(
+            my_app = self.my_app,
             conn = self.conn,
             name = table.name,
             otype = table.type,
@@ -167,12 +189,12 @@ class myDBSchema(myDBObject):
         if len(lst):
             self.add_children(list_obj = lst)
 
-class myDBCatalog(myDBObject):
-    def expand(self) -> None:
-        if self.children is not None:
-            return None
+        return None
 
-        schemas = []
+class myDBCatalog(myDBObject):
+    def _expand_internal(self) -> None:
+
+        schemas = lst = []
         schemas = self.conn.list_schemas(
                 catalog = self.conn.sanitize_search_string(self.name))
 
@@ -187,72 +209,74 @@ class myDBCatalog(myDBObject):
                     schemas.append(r.schema)
         if len(schemas):
             lst = [myDBSchema(
+                my_app = self.my_app,
                 conn = self.conn,
                 name = schema,
                 otype = "Schema",
                 parent = self,
                 level = self.level + 1) for schema in schemas]
-            self.add_children(list_obj = lst)
-            return None
-
-        # No schemas found; but if there are tables then these are direct
-        # descendents, i.e. MySQL
-        lst = [myDBTable(
-            conn = self.conn,
-            name = table.name,
-            otype = table.type,
-            parent = self,
-            level = self.level + 1) for table in res]
+        else:
+            # No schemas found; but if there are tables then these are direct
+            # descendents, i.e. MySQL
+            lst = [myDBTable(
+                my_app = self.my_app,
+                conn = self.conn,
+                name = table.name,
+                otype = table.type,
+                parent = self,
+                level = self.level + 1) for table in res]
         if len(lst):
             self.add_children(list_obj = lst)
 
+        return None
+
+
 class myDBConn(myDBObject):
-    def expand(self) -> None:
+    def _expand_internal(self) -> None:
         if not self.conn.connected():
             return None
-        if self.children is not None:
-            return None
 
+        lst = []
         cat_support = self.conn.catalog_support()
         if cat_support:
             rows = self.conn.list_catalogs()
             if len(rows):
                 lst = [myDBCatalog(
+                    my_app = self.my_app,
                     conn = self.conn,
                     name = row,
                     otype = "Catalog",
                     parent = self,
                     level = self.level + 1) for row in rows]
-                self.add_children(list_obj = lst)
-            return None
-
-        res = self.conn.find_tables(
-                catalog = "%",
-                schema = "",
-                table = "",
-                type = "")
-        schemas = []
-        for r in res:
-            if (r.schema not in schemas and r.schema != ""):
-                schemas.append(r.schema)
-        if len(schemas):
-            lst = [myDBSchema(
-                conn = self.conn,
-                name = schema,
-                otype = "Schema",
-                parent = self,
-                level = self.level + 1) for schema in schemas]
-            self.add_children(list_obj = lst)
-            return None
-
-        lst = [myDBTable(
-            conn = self.conn,
-            name = table.name,
-            otype = table.type,
-            parent = self,
-            level = self.level + 1) for table in res]
+        else:
+            schemas = []
+            res = self.conn.find_tables(
+                    catalog = "%",
+                    schema = "",
+                    table = "",
+                    type = "")
+            for r in res:
+                if (r.schema not in schemas and r.schema != ""):
+                    schemas.append(r.schema)
+            if len(schemas):
+                lst = [myDBSchema(
+                    my_app = self.my_app,
+                    conn = self.conn,
+                    name = schema,
+                    otype = "Schema",
+                    parent = self,
+                    level = self.level + 1) for schema in schemas]
+            else:
+                lst = [myDBTable(
+                    my_app = self.my_app,
+                    conn = self.conn,
+                    name = table.name,
+                    otype = table.type,
+                    parent = self,
+                    level = self.level + 1) for table in res]
         if len(lst):
             self.add_children(list_obj = lst)
+        return None
 
 def sql_sidebar_help(my_app: "sqlApp"):
     """
@@ -280,6 +304,28 @@ def sql_sidebar_help(my_app: "sqlApp"):
         & ShowSidebar(my_app)
         & Condition(
             lambda: not my_app.show_exit_confirmation
+        ))
+
+def expanding_object_notification(my_app: "sqlApp"):
+    """
+    Create the `Layout` for the 'Expanding object' notification.
+    """
+
+    def get_text_fragments():
+        # Show navigation info.
+        return [("fg:red", "Expanding object ...")]
+
+    return ConditionalContainer(
+        content = Window(
+            FormattedTextControl(get_text_fragments),
+            style = "class:sidebar",
+            width=Dimension.exact( 45 ),
+            height=Dimension(max = 1),
+        ),
+        filter = ~is_done
+        & ShowSidebar(my_app)
+        & Condition(
+            lambda: my_app.show_expanding_object
         ))
 
 def sql_sidebar_navigation():
@@ -515,4 +561,5 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             height = Dimension(min = 7, preferred = 33),
             scroll_offsets = ScrollOffsets(top = 1, bottom = 1)),
         Window(style="class:sidebar,separator", height=1),
+        expanding_object_notification(my_app),
         sql_sidebar_navigation()])
