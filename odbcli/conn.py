@@ -371,9 +371,11 @@ class MSSQL(sqlConnection):
             catalog = self.sanitize_search_string(self.current_catalog())
 
         try:
+            self.logger.debug("Calling list_schemas...")
             crsr = self.execute(qry.format(catalog = catalog))
             res = crsr.fetchall()
             crsr.close()
+            self.logger.debug("Calling list_schemas: done")
             schemas = []
             for r in res:
                 schemas.append(r[1])
