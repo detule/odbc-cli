@@ -39,6 +39,8 @@ class sqlApp:
         self.show_exit_confirmation: bool = False
         self.exit_message: str = "Do you really want to exit?"
 
+        self.show_expanding_object: bool = False
+
         self.show_sidebar: bool = True
         self.show_login_prompt: bool = False
         self.show_preview: bool = False
@@ -48,6 +50,7 @@ class sqlApp:
         dsns = list(datasources().keys())
         for dsn in dsns:
             self.obj_list.append(myDBConn(
+                my_app = self,
                 conn = sqlConnection(dsn = dsn),
                 name = dsn,
                 otype = "Connection"))
@@ -191,7 +194,7 @@ class sqlApp:
             else:
                 event.app.layout.focus_previous()
 
-        sidebar_visible = Condition(lambda: self.show_sidebar and not self.show_login_prompt and not self.show_preview) \
+        sidebar_visible = Condition(lambda: self.show_sidebar and not self.show_expanding_object and not self.show_login_prompt and not self.show_preview) \
                         & ~has_focus("sidebarsearchbuffer")
         @kb.add("up", filter=sidebar_visible)
         @kb.add("c-p", filter=sidebar_visible)
