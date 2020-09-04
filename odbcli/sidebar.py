@@ -17,7 +17,6 @@ from prompt_toolkit.mouse_events import MouseEvent
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import SearchToolbar
 from prompt_toolkit.filters import Condition
-from prompt_toolkit.application import get_app
 from .conn import sqlConnection
 from .filters import ShowSidebar
 from .utils import if_mousedown
@@ -61,11 +60,11 @@ class myDBObject:
 
         loop = get_event_loop()
         self.my_app.show_expanding_object = True
-        get_app().invalidate()
+        self.my_app.application.invalidate()
         def run():
             self._expand_internal()
             self.my_app.show_expanding_object = False
-            get_app().invalidate()
+            self.my_app.application.invalidate()
 
         loop.run_in_executor(None, run)
 
@@ -193,7 +192,6 @@ class myDBSchema(myDBObject):
 
 class myDBCatalog(myDBObject):
     def _expand_internal(self) -> None:
-
         schemas = lst = []
         schemas = self.conn.list_schemas(
                 catalog = self.conn.sanitize_search_string(self.name))
