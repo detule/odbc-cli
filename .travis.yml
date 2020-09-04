@@ -21,7 +21,8 @@ script:
     if [[ "$TRAVIS_TAG" == "" ]]; then
         sed -i "/version = / s/\",$/.$TRAVIS_BUILD_NUMBER\",/" setup.py
     fi
-  - pip install . twine
+  - pip install . twine pytest
+  - pytest . 
   - python setup.py sdist
 
 deploy:
