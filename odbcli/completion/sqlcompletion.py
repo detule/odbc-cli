@@ -31,7 +31,7 @@ View = namedtuple('View', ['catalog', 'schema', 'table_refs'])
 # JoinConditions are suggested after ON, e.g. 'foo.barid = bar.barid'
 JoinCondition = namedtuple('JoinCondition', ['table_refs', 'parent'])
 # Joins are suggested after JOIN, e.g. 'foo ON foo.barid = bar.barid'
-Join = namedtuple('Join', ['table_refs', 'schema', 'catalog'])
+Join = namedtuple('Join', ['table_refs', 'catalog', 'schema'])
 
 Function = namedtuple('Function', ['catalog', 'schema', 'table_refs', 'usage'])
 # For convenience, don't require the `usage` argument in Function constructor
@@ -48,7 +48,7 @@ Column.__new__.__defaults__ = (None, None, tuple(), False, None)
 
 Keyword = namedtuple('Keyword', ['last_token'])
 Keyword.__new__.__defaults__ = (None,)
-Datatype = namedtuple('Datatype', ['schema'])
+Datatype = namedtuple('Datatype', ['catalog', 'schema'])
 Alias = namedtuple('Alias', ['aliases'])
 
 Path = namedtuple('Path', [])
@@ -114,15 +114,6 @@ class SqlStatement:
 
     def get_previous_token(self, token):
         return self.parsed.token_prev(self.parsed.token_index(token))[1]
-
-    def get_identifier_schema(self):
-        schema = self.identifier.get_parent_name() \
-            if (self.identifier and self.identifier.get_parent_name()) else None
-        # If schema name is unquoted, lower-case it
-        if schema and self.identifier.value[0] != '"':
-            schema = schema.lower()
-
-        return schema
 
     def get_identifier_parents(self):
         if self.identifier is None:
@@ -408,6 +399,8 @@ def suggest_based_on_last_token(token, stmt):
                        local_tables=stmt.local_tables),)
     if token_v in ('select', 'where', 'having', 'by', 'distinct'):
         # Check for a table alias or schema qualification
+        # TODO: Use get_identifier_parents
+        # Table/View/Function need to account for catalog
         parent = stmt.identifier.get_parent_name() \
             if (stmt.identifier and stmt.identifier.get_parent_name()) else []
         tables = stmt.get_tables()
@@ -450,25 +443,23 @@ def suggest_based_on_last_token(token, stmt):
         else:
             suggest.extend((Table(catalog, schema), View(catalog, schema)))
 
-        # TODO: Join(catalog = catalog, ...)
         if is_join and _allow_join(stmt.parsed):
             tables = stmt.get_tables('before')
             suggest.append(Join(
                 table_refs = tables,
-                schema=schema,
-                catalog = catalog))
+                catalog = catalog,
+                schema = schema))
 
         return tuple(suggest)
 
-    # TODO: Use get_identifier_parents
     if token_v == 'function':
-        schema = stmt.get_identifier_schema()
+        catalog, schema = stmt.get_identifier_parents()
         # stmt.get_previous_token will fail for e.g. `SELECT 1 FROM functions
         # WHERE function:`
         try:
             prev = stmt.get_previous_token(token).value.lower()
             if prev in('drop', 'alter', 'create', 'create or replace'):
-                return (Function(schema=schema, usage='signature'),)
+                return (Function(catalog = catalog, schema = schema, usage = 'signature'),)
         except ValueError:
             pass
         return tuple()
@@ -502,6 +493,7 @@ def suggest_based_on_last_token(token, stmt):
             # "ON parent.<suggestion>"
             # parent can be either a schema name or table alias
             filteredtables = tuple(t for t in tables if identifies(parent, t))
+            # TODO: Table/View/Function suggestions need accounting for catalog
             sugs = [Column(table_refs=filteredtables,
                            local_tables=stmt.local_tables),
                     Table(schema=parent),
@@ -538,12 +530,14 @@ def suggest_based_on_last_token(token, stmt):
         #   SELECT foo::bar
         # Note that tables are a form of composite type in postgresql, so
         # they're suggested here as well
-        # TODO: Use get_identifier_parents
-        schema = stmt.get_identifier_schema()
-        suggestions = [Datatype(schema=schema),
-                       Table(schema=schema)]
-        if not schema:
+        catalog, schema = stmt.get_identifier_parents()
+        suggestions = [Datatype(catalog = catalog, schema = schema),
+                       Table(catalog = catalog, schema = schema)]
+        if catalog is None and schema is None:
+            suggestions.append(Database())
             suggestions.append(Schema())
+        elif not catalog:
+            suggestions.append(Schema(parent = schema))
         return tuple(suggestions)
     if token_v in {'alter', 'create', 'drop'}:
         return (Keyword(token_v.upper()),)

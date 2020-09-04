@@ -115,8 +115,7 @@ class MssqlCompleter(Completer):
         self.name_pattern = re.compile(r"^[_a-z][_a-z0-9\$]*$")
 
         self.databases = []
-        self.dbmetadata = {'table': {}, 'view': {}, 'functions': {},
-                           'datatypes': {}}
+        self.dbmetadata = {'table': {}, 'view': {}, 'functions': {}}
         self.search_path = []
         self.casing = {}
 
@@ -763,7 +762,7 @@ class MssqlCompleter(Completer):
         self.logger.debug("get_from_clause: grandparent.parent %s.%s", s.grandparent, s.parent)
         t_sug = Table(s.grandparent, s.parent, s.table_refs, s.local_tables)
         v_sug = View(s.grandparent, s.parent, s.table_refs)
-        f_sug = Function(s.parent, s.table_refs, usage='from')
+        f_sug = Function(s.grandparent, s.parent, s.table_refs, usage='from')
         return (
             self.get_table_matches(t_sug, word_before_cursor, alias) +
             self.get_view_matches(v_sug, word_before_cursor, alias) +
@@ -921,14 +920,18 @@ class MssqlCompleter(Completer):
 
     def get_datatype_matches(self, suggestion, word_before_cursor):
         # suggest custom datatypes
-        types = self.populate_schema_objects(suggestion.schema, 'datatypes')
-        types = [self._make_cand(t, False, suggestion) for t in types]
-        matches = self.find_matches(word_before_cursor, types, meta='datatype')
+        # OG: Currently we are not querying for these
+        # types = self.populate_schema_objects(suggestion.schema, 'datatypes')
+        # types = [self._make_cand(t, False, suggestion) for t in types]
+        # matches = self.find_matches(word_before_cursor, types, meta='datatype')
 
-        if not suggestion.schema:
-            # Also suggest hardcoded types
-            matches.extend(self.find_matches(word_before_cursor, self.datatypes,
-                                             mode='strict', meta='datatype'))
+        # if not suggestion.schema:
+        #    # Also suggest hardcoded types
+        #    matches.extend(self.find_matches(word_before_cursor, self.datatypes,
+        #                                     mode='strict', meta='datatype'))
+        # OG: Just return hardcoded types
+        matches = self.find_matches(word_before_cursor, self.datatypes,
+            mode='strict', meta='datatype')
 
         return matches
 
@@ -1175,6 +1178,7 @@ class MssqlCompleter(Completer):
                 )
         return ret
 
+    # TODO: this needs to handle catalog argument
     def populate_functions(self, schema, filter_func):
         """Returns a list of function SchemaObjects.
 
