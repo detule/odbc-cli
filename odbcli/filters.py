@@ -11,7 +11,7 @@ class SqlAppFilter(Filter):
 
 class ShowSidebar(SqlAppFilter):
     def __call__(self) -> bool:
-        return self.my_app.show_sidebar
+        return self.my_app.show_sidebar and not self.my_app.show_exit_confirmation
 
 class ShowLoginPrompt(SqlAppFilter):
     def __call__(self) -> bool:

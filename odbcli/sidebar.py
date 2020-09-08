@@ -21,6 +21,7 @@ from prompt_toolkit.filters import Condition
 from .conn import sqlConnection
 from .filters import ShowSidebar
 from .utils import if_mousedown
+from .__init__ import __version__
 
 class myDBObject:
     def __init__(
@@ -343,23 +344,23 @@ def sql_sidebar_navigation():
     def get_text_fragments():
         # Show navigation info.
         return [
-            ("class:sidebar", "   "),
-            ("class:sidebar.key", "[Up/Dn]"),
-            ("class:sidebar", " "),
-            ("class:sidebar.description", "Navigate"),
-            ("class:sidebar", " "),
-            ("class:sidebar.key", "[L/R]"),
-            ("class:sidebar", " "),
-            ("class:sidebar.description", "Expand/Collapse"),
-            ("class:sidebar", "\n   "),
-            ("class:sidebar.key", "[Enter]"),
-            ("class:sidebar", " "),
-            ("class:sidebar.description", "Connect/Preview"),
+            ("class:sidebar.navigation", "   "),
+            ("class:sidebar.navigation.key", "[Up/Dn]"),
+            ("class:sidebar.navigation", " "),
+            ("class:sidebar.navigation.description", "Navigate"),
+            ("class:sidebar.navigation", " "),
+            ("class:sidebar.navigation.key", "[L/R]"),
+            ("class:sidebar.navigation", " "),
+            ("class:sidebar.navigation.description", "Expand/Collapse"),
+            ("class:sidebar.navigation", "\n   "),
+            ("class:sidebar.navigation.key", "[Enter]"),
+            ("class:sidebar.navigation", " "),
+            ("class:sidebar.navigation.description", "Connect/Preview"),
         ]
 
     return Window(
         FormattedTextControl(get_text_fragments),
-        style = "class:sidebar",
+        style = "class:sidebar.navigation",
         width=Dimension.exact( 45 ),
         height=Dimension(max = 2),
     )
@@ -381,11 +382,7 @@ def show_sidebar_button_info(my_app: "sqlApp") -> Container:
             ("class:status-toolbar.key", "[C-t]", toggle_sidebar),
             ("class:status-toolbar", " Object Browser", toggle_sidebar),
             ("class:status-toolbar", " - "),
-            (
-                "class:status-toolbar.python-version",
-                "%s %i.%i.%i"
-                % (platform.python_implementation(), version[0], version[1], version[2]),
-                ),
+            ("class:status-toolbar.cli-version", "odbcli %s" % __version__),
             ("class:status-toolbar", " "),
             ]
     width = fragment_list_width(tokens)
@@ -422,6 +419,7 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
         tokens: StyleAndTextTuples = []
         selected = obj.selected
         expanded = obj.children is not None
+        connected = obj.otype == "Connection" and obj.conn.connected()
         active = my_app.active_conn is not None and my_app.active_conn is obj.conn and obj.level == 0
 
         act = ",active" if active else ""
@@ -431,10 +429,10 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
         else:
             name_trim = ("%-" + str(24 - 2 * obj.level) + "s") % obj.name
 
+        tokens.append(("class:sidebar.label" + sel + act, " >" if connected else "  "))
         tokens.append(
             ("class:sidebar.label" + sel, " " * 2 * obj.level, expand_item)
         )
-        tokens.append(("class:sidebar.label" + sel, " >" if selected else "  "))
         tokens.append(
             ("class:sidebar.label" + sel + act,
             name_trim,
@@ -447,10 +445,12 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             tokens.append(("[SetCursorPosition]", ""))
 
         if expanded:
-            tokens.append(("class:sidebar", "\/"))
+            tokens.append(("class:sidebar.status" + sel + act, "\/"))
         else:
-            tokens.append(("class:sidebar", " <" if selected else "  "))
+            tokens.append(("class:sidebar.status" + sel + act, " <" if selected else "  "))
 
+        # Expand past the edge of the visible buffer to get an even panel
+        tokens.append(("class:sidebar.status" + sel + act, " " * 10))
         return tokens
 
     def _buffer_pos_changed(buff):
@@ -567,6 +567,10 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             width = Dimension.exact( 45 ),
             height = Dimension(min = 7, preferred = 33),
             scroll_offsets = ScrollOffsets(top = 1, bottom = 1)),
-        Window(style="class:sidebar,separator", height=1),
+        Window(
+            height = Dimension.exact(1),
+            char = "\u2500",
+            style = "class:sidebar,separator",
+            ),
         expanding_object_notification(my_app),
         sql_sidebar_navigation()])
