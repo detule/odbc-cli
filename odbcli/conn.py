@@ -359,30 +359,29 @@ class MSSQL(sqlConnection):
 
     def list_schemas(self, catalog = None) -> list:
         """ Optimization for listing out-of-database schemas by
-            always executing catalog specific sp_tables sproc.
-            Also since FreeTDS seems to return duplicates let's
-            use it for both in- and out-of-database listings """
+            always querying catalog.sys.schemas. """
         res = []
-        qry = "EXEC {catalog}.dbo.sp_tables @table_name = '', @table_owner = '%', @table_qualifier = '', @table_type = ''"
+        qry = "SELECT name FROM {catalog}.sys.schemas " \
+              "WHERE name NOT IN ('db_owner', 'db_accessadmin', " \
+              "'db_securityadmin', 'db_ddladmin', 'db_backupoperator', " \
+              "'db_datareader', 'db_datawriter', 'db_denydatareader', " \
+              "'db_denydatawriter')"
 
-#        if catalog is None or catalog in [self.current_catalog(), self.sanitize_search_string(self.current_catalog())]:
-#            return super().list_schemas(catalog = catalog)
         if catalog is None and self.current_catalog():
             catalog = self.sanitize_search_string(self.current_catalog())
 
-        try:
-            self.logger.debug("Calling list_schemas...")
-            crsr = self.execute(qry.format(catalog = catalog))
-            res = crsr.fetchall()
-            crsr.close()
-            self.logger.debug("Calling list_schemas: done")
-            schemas = []
-            for r in res:
-                schemas.append(r[1])
-            if len(schemas):
-                return schemas
-        except DatabaseError as e:
-            self.logger.warning("MSSQL list_schemas: %s", str(e))
+        if catalog:
+            try:
+                self.logger.debug("Calling list_schemas...")
+                crsr = self.execute(qry.format(catalog = catalog))
+                res = crsr.fetchall()
+                crsr.close()
+                self.logger.debug("Calling list_schemas: done")
+                schemas = [r[0] for r in res]
+                if len(schemas):
+                    return schemas
+            except DatabaseError as e:
+                self.logger.warning("MSSQL list_schemas: %s", str(e))
 
         return super().list_schemas(catalog = catalog)
 
