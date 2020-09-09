@@ -10,7 +10,7 @@ from prompt_toolkit.key_binding.bindings.focus import focus_next
 from prompt_toolkit.filters import Condition, has_focus
 from logging.handlers import RotatingFileHandler
 from cyanodbc import datasources
-from .sidebar import myDBConn
+from .sidebar import myDBConn, myDBObject
 from .conn import sqlConnection
 from .completion.mssqlcompleter import MssqlCompleter
 from .config import get_config, config_location, ensure_dir_exists
@@ -56,10 +56,29 @@ class sqlApp:
                 otype = "Connection"))
         for i in range(len(self.obj_list) - 1):
             self.obj_list[i].next_object = self.obj_list[i + 1]
-        self.obj_list[0].select_next()
+        # Loop over side-bar when moving past the element on the bottom
+        self.obj_list[len(self.obj_list) - 1].next_object = self.obj_list[0]
+        self._selected_object = self.obj_list[0]
         self.completer = MssqlCompleter(smart_completion=True, my_app = self)
 
         self.application = self._create_application()
+
+    @property
+    def selected_object(self) -> myDBObject:
+        return self._selected_object
+
+    @selected_object.setter
+    def selected_object(self, obj) -> None:
+        self._selected_object = obj
+
+    def select_next(self) -> None:
+        self.selected_object = self.selected_object.next_object
+
+    def select_previous(self) -> None:
+        obj = self.selected_object.parent if self.selected_object.parent is not None else self.obj_list[0]
+        while obj.next_object is not self.selected_object:
+            obj = obj.next_object
+        self.selected_object = obj
 
     @property
     def editing_mode(self) -> EditingMode:
@@ -201,19 +220,19 @@ class sqlApp:
         @kb.add("k", filter=sidebar_visible)
         def _(event):
             " Go to previous option. "
-            self.obj_list[0].select_previous()
+            self.select_previous()
 
         @kb.add("down", filter=sidebar_visible)
         @kb.add("c-n", filter=sidebar_visible)
         @kb.add("j", filter=sidebar_visible)
         def _(event):
             " Go to next option. "
-            self.obj_list[0].select_next()
+            self.select_next()
 
         @kb.add("enter", filter = sidebar_visible)
         def _(event):
             " If connection, connect.  If table preview"
-            obj = self.obj_list[0].selected_object
+            obj = self.selected_object
             if type(obj).__name__ == "myDBConn" and not obj.conn.connected():
                 self.show_login_prompt = True
                 event.app.layout.focus(self.sql_layout.lprompt)
@@ -231,7 +250,7 @@ class sqlApp:
         @kb.add(" ", filter=sidebar_visible)
         def _(event):
             " Select next value for current option. "
-            obj = self.obj_list[0].selected_object
+            obj = self.selected_object
             obj.expand()
             if type(obj).__name__ == "myDBConn" and not obj.conn.connected():
                 self.show_login_prompt = True
@@ -241,7 +260,7 @@ class sqlApp:
         @kb.add("h", filter=sidebar_visible)
         def _(event):
             " Select next value for current option. "
-            obj = self.obj_list[0].selected_object
+            obj = self.selected_object
             if type(obj).__name__ == "myDBConn" and obj.conn.connected() and obj.children is None:
                 self.show_disconnect_dialog = True
                 event.app.layout.focus(self.sql_layout.disconnect_dialog)

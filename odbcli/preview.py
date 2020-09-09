@@ -59,7 +59,7 @@ def preview_element(my_app: "sqlApp"):
             )
 
     def refresh_results(window_height) -> bool:
-        obj = my_app.obj_list[0].selected_object
+        obj = my_app.selected_object
         conn_preview = obj.conn
         res_last = conn_preview.async_lastresponse()
 
@@ -84,7 +84,7 @@ def preview_element(my_app: "sqlApp"):
         return True
 
     def accept(buff: Buffer) -> bool:
-        obj = my_app.obj_list[0].selected_object
+        obj = my_app.selected_object
         conn_preview = obj.conn
         catalog = None
         schema = None
@@ -120,7 +120,7 @@ def preview_element(my_app: "sqlApp"):
     input_buffer.accept_handler = accept
 
     def cancel_handler() -> None:
-        conn_preview = my_app.obj_list[0].selected_object.conn
+        conn_preview = my_app.selected_object.conn
         conn_preview.async_fetchdone()
         conn_preview.status = connStatus.IDLE
         input_buffer.text = ""

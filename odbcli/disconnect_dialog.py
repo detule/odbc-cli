@@ -6,7 +6,7 @@ from .filters import ShowDisconnectDialog
 
 def disconnect_dialog(my_app: "sqlApp"):
     def yes_handler() -> None:
-        obj = my_app.obj_list[0].selected_object
+        obj = my_app.selected_object
         obj.conn.close()
         if my_app.active_conn is obj.conn:
             my_app.active_conn = None
@@ -20,7 +20,7 @@ def disconnect_dialog(my_app: "sqlApp"):
         my_app.application.layout.focus("sidebarbuffer")
 
     dialog = Dialog(
-        title = lambda: my_app.obj_list[0].selected_object.name,
+        title = lambda: my_app.selected_object.name,
         body=Label(text = "Are you sure you want to disconnect?",
             dont_extend_height = True),
         buttons=[
