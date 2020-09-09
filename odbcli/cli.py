@@ -31,7 +31,7 @@ def main():
             # If it's a preview query we need an indication
             # of where to run the query
             if(app_res[0] == "preview"):
-                sqlConn = my_app.obj_list[0].selected_object.conn
+                sqlConn = my_app.selected_object.conn
             else:
                 sqlConn = my_app.active_conn
             if sqlConn is not None:

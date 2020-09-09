@@ -85,18 +85,16 @@ class myDBObject:
         next_object.  This way we re-query the database / force re-fresh
         which may be suboptimal.  TODO: Codify not/refresh path
         """
-        if not self.selected:
+        if self is not self.my_app.selected_object:
             return
         if self.children is not None:
-            self.next_object = self.children[len(self.children) - 1].next_object
             obj = self.children[len(self.children) - 1].next_object
-            if obj is not None and obj.level <= self.level:
-                self.next_object = obj
-            else:
-                self.next_object = None
+            while obj.level > self.level:
+                obj = obj.next_object
+            self.next_object = obj
             self.children = None
         elif self.parent is not None:
-            self.parent.selected = True
+            self.my_app.selected_object = self.parent
             self.parent.collapse()
 
     def add_children(self, list_obj: List["myDBObject"]) -> None:
@@ -105,41 +103,6 @@ class myDBObject:
             self.children[i].next_object = self.children[i + 1]
         self.children[len(self.children) - 1].next_object = self.next_object
         self.next_object = self.children[0]
-
-    def select_next(self) -> None:
-        if self.selected_object is None or self.next_object is None:
-            self.selected = True
-            return None
-
-        if self.selected:
-            self.next_object.selected = True
-            self.selected = False
-        else:
-            self.next_object.select_next()
-
-    def select_previous(self) -> None:
-        if self.selected == True:
-        # Can't proceed past this point so exit
-        # should never happen unless the very first object
-        # is seleced in which case it makes sense
-            return None
-        if self.selected_object is None or self.next_object is None:
-            self.selected = True
-            return None
-
-        if self.next_object.selected == True:
-            self.next_object.selected = False
-            self.selected = True
-        else:
-            self.next_object.select_previous()
-
-    @property
-    def selected_object(self) -> "myDBObject":
-        if self.selected:
-            return self
-        elif self.next_object:
-            return self.next_object.selected_object
-        return None
 
 class myDBColumn(myDBObject):
     def _expand_internal(self) -> None:
@@ -296,7 +259,7 @@ def sql_sidebar_help(my_app: "sqlApp"):
         """
         Return the description of the selected option.
         """
-        obj = my_app.obj_list[0].selected_object
+        obj = my_app.selected_object
         if obj is not None:
             return obj.name
         return ""
@@ -417,7 +380,7 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
     def tokenize_obj(obj: "myDBObject") -> StyleAndTextTuples:
         " Recursively build the token list "
         tokens: StyleAndTextTuples = []
-        selected = obj.selected
+        selected = obj is my_app.selected_object
         expanded = obj.children is not None
         connected = obj.otype == "Connection" and obj.conn.connected()
         active = my_app.active_conn is not None and my_app.active_conn is obj.conn and obj.level == 0
@@ -464,9 +427,6 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             if line_no < 0:  # When the cursor is above the inserted region.
                 raise IndexError
 
-            obj = my_app.obj_list[0].selected_object
-            if obj is not None:
-                obj.selected = False
             idx = 0
             obj = my_app.obj_list[0]
             while idx < line_no:
@@ -475,7 +435,7 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
                 idx += 1
                 obj = obj.next_object
 
-            obj.selected = True
+            my_app.selected_object = obj
 
         except IndexError:
             pass
@@ -511,12 +471,12 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
     class myControl(BufferControl):
 
         def move_cursor_down(self):
-            my_app.obj_list[0].select_next()
+            my_app.select_next()
         # Need to figure out what do do here
         # AFAICT thse are only called for the mouse handler
         # when events are otherwise not handled
         def move_cursor_up(self):
-            my_app.obj_list[0].select_previous()
+            my_app.select_previous()
 
         def mouse_handler(self, mouse_event: MouseEvent) -> "NotImplementedOrNone":
             """
@@ -534,12 +494,12 @@ def sql_sidebar(my_app: "sqlApp") -> Window:
             obj = my_app.obj_list[0]
             res.append(obj.name)
             res_tokens.append(tokenize_obj(obj))
-            found_selected = obj.selected
+            found_selected = obj is my_app.selected_object
             idx = 0
-            while obj.next_object:
+            while obj.next_object is not my_app.obj_list[0]:
                 res.append(obj.next_object.name)
                 res_tokens.append(tokenize_obj(obj.next_object))
-                if not obj.selected and not found_selected:
+                if obj is not my_app.selected_object and not found_selected:
                     count += 1
                     idx += len(obj.name) + 1 # Newline character
                 else:

@@ -12,7 +12,7 @@ def login_prompt(my_app: "sqlApp"):
 
     def ok_handler() -> None:
         my_app.application.layout.focus(uidTextfield)
-        obj = my_app.obj_list[0].selected_object
+        obj = my_app.selected_object
         try:
             obj.conn.connect(username = uidTextfield.text, password = pwdTextfield.text)
             # Query the type of back-end and instantiate an appropriate class
