@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 from prompt_toolkit.enums import EditingMode
 from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
@@ -48,6 +49,8 @@ class sqlApp:
         self.active_conn = None
         self.obj_list = []
         dsns = list(datasources().keys())
+        if len(dsns) < 1:
+            sys.exit("No datasources found ... exiting.")
         for dsn in dsns:
             self.obj_list.append(myDBConn(
                 my_app = self,
