@@ -11,8 +11,8 @@ from cyanodbc import ConnectError, DatabaseError
 from cli_helpers.tabular_output import TabularOutputFormatter
 from functools import partial
 from .filters import ShowPreview
-from .conn import connWrappers, connStatus
-from .executor import commandStatus
+from .conn import connWrappers, connStatus, executionStatus
+from logging import getLogger
 
 def preview_element(my_app: "sqlApp"):
     help_text = """
@@ -34,8 +34,6 @@ def preview_element(my_app: "sqlApp"):
     )
     input_window = Window(
             input_control,
-#            style = "class:preview-input-field"
-#            left_margins=[PythonPromptMargin()]
         )
 
     search_buffer = Buffer(name = "previewsearchbuffer")
@@ -59,22 +57,24 @@ def preview_element(my_app: "sqlApp"):
             )
 
     def refresh_results(window_height) -> bool:
-        obj = my_app.selected_object
-        conn_preview = obj.conn
-        res_last = conn_preview.async_lastresponse()
+        sql_conn = my_app.selected_object.conn
 
-        if res_last.status == commandStatus.FAIL:
+        if sql_conn.execution_status == executionStatus.FAIL:
             # Let's display the error message to the user
-            output = res_last.payload
+            output = sql_conn.execution_err
         else:
-            resf = conn_preview.async_fetch(size = window_height - 4)
-            if len(resf.payload[0]):
-                conn_preview.status = connStatus.FETCHING
-                output = formatter.format_output(
-                    resf.payload[1], resf.payload[0], format_name = "psql")
+            crsr = sql_conn.cursor
+            if crsr.description:
+                cols = [col.name for col in crsr.description]
+            else:
+                cols = []
+            if len(cols):
+                sql_conn.status = connStatus.FETCHING
+                res = sql_conn.async_fetchmany(size = window_height - 4)
+                output = formatter.format_output(res, cols, format_name = "psql")
                 output = "\n".join(output)
             else:
-                conn_preview.status = connStatus.IDLE
+                sql_conn.status = connStatus.IDLE
                 output = "No rows returned\n"
 
         # Add text to output buffer.
@@ -85,7 +85,7 @@ def preview_element(my_app: "sqlApp"):
 
     def accept(buff: Buffer) -> bool:
         obj = my_app.selected_object
-        conn_preview = obj.conn
+        sql_conn = obj.conn
         catalog = None
         schema = None
         # TODO: Verify connected
@@ -99,16 +99,17 @@ def preview_element(my_app: "sqlApp"):
                     catalog = obj.parent.parent.name
 
         if catalog:
-            catalog =  (conn_preview.quotechar + "%s" + conn_preview.quotechar) % catalog
+            catalog =  (sql_conn.quotechar + "%s" + sql_conn.quotechar) % catalog
         if schema:
-            schema =  (conn_preview.quotechar + "%s" + conn_preview.quotechar) % schema
-        name = (conn_preview.quotechar + "%s" + conn_preview.quotechar) % obj.name
+            schema =  (sql_conn.quotechar + "%s" + sql_conn.quotechar) % schema
+        name = (sql_conn.quotechar + "%s" + sql_conn.quotechar) % obj.name
         identifier = ".".join(list(filter(None, [catalog, schema, obj.name])))
-        query = conn_preview.preview_query(table = identifier, filter_query = buff.text)
+        query = sql_conn.preview_query(table = identifier, filter_query = buff.text)
 
         func = partial(refresh_results,
                 window_height = output_field.window.render_info.window_height)
-        if conn_preview.query != query or conn_preview.status == connStatus.IDLE:
+        # If status is IDLE, this is the first time we are executing.
+        if sql_conn.query != query or sql_conn.status == connStatus.IDLE:
             # Exit the app to execute the query
             my_app.application.exit(result = ["preview", query])
             my_app.application.pre_run_callables.append(func)
@@ -120,9 +121,9 @@ def preview_element(my_app: "sqlApp"):
     input_buffer.accept_handler = accept
 
     def cancel_handler() -> None:
-        conn_preview = my_app.selected_object.conn
-        conn_preview.async_fetchdone()
-        conn_preview.status = connStatus.IDLE
+        sql_conn = my_app.selected_object.conn
+        sql_conn.close_cursor()
+        sql_conn.status = connStatus.IDLE
         input_buffer.text = ""
         output_field.buffer.set_document(Document(
             text = help_text, cursor_position = 0

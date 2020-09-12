@@ -25,7 +25,7 @@ def login_prompt(my_app: "sqlApp"):
                     username = obj.conn.username,
                     password = obj.conn.password)
             obj.conn.close()
-            newConn.connect(start_executor = True)
+            newConn.connect()
             obj.conn = newConn
             my_app.active_conn = obj.conn
             # OG some thread locking may be needed here

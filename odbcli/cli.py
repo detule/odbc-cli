@@ -12,8 +12,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.utils import get_cwidth
 from .app import sqlApp, ExitEX
 from .layout import sqlAppLayout
-from .conn import connStatus
-from .executor import cmsg, commandStatus
+from .conn import connStatus, executionStatus
 
 
 def main():
@@ -31,42 +30,40 @@ def main():
             # If it's a preview query we need an indication
             # of where to run the query
             if(app_res[0] == "preview"):
-                sqlConn = my_app.selected_object.conn
+                sql_conn = my_app.selected_object.conn
             else:
-                sqlConn = my_app.active_conn
-            if sqlConn is not None:
+                sql_conn = my_app.active_conn
+            if sql_conn is not None:
                 #TODO also check that it is connected
                 try:
                     secho("Executing query...Ctrl-c to cancel", err = False)
                     start = time()
-                    res = sqlConn.async_execute(app_res[1])
+                    crsr = sql_conn.async_execute(app_res[1])
                     execution = time() - start
-                    sqlConn.status = connStatus.IDLE
                     secho("Query execution...done", err = False)
                     if(app_res[0] == "preview"):
                         continue
                     if my_app.timing_enabled:
                         print("Time: %0.03fs" % execution)
-                    if res.status == commandStatus.OKWRESULTS:
-                        ht = my_app.application.output.get_size()[0]
-                        formatted = sqlConn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, my_app.table_format)
-                        sqlConn.status = connStatus.FETCHING
-                        echo_via_pager(formatted)
-                    elif res.status == commandStatus.OK:
-                        secho("No rows returned\n", err = False)
+
+                    if sql_conn.execution_status == executionStatus.FAIL:
+                        err = sql_conn.execution_err
+                        secho("Query error: %s\n" % err, err = True, fg = "red")
                     else:
-                        secho("Query error: %s\n" % res.payload, err = True, fg = "red")
-                except BrokenPipeError:
-                    my_app.logger.debug('BrokenPipeError caught. Recovering...', file = stderr)
+                        if crsr.description:
+                            cols = [col.name for col in crsr.description]
+                        else:
+                            cols = []
+                        if len(cols):
+                            ht = my_app.application.output.get_size()[0]
+                            formatted = sql_conn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, cols, my_app.table_format)
+                            sql_conn.status = connStatus.FETCHING
+                            echo_via_pager(formatted)
+                        else:
+                            secho("No rows returned\n", err = False)
                 except KeyboardInterrupt:
-                    secho("Cancelling query...", err = True, fg = 'red')
-                    sqlConn.executor.terminate()
-                    sqlConn.executor.join()
-                    secho("Query cancelled.", err = True, fg='red')
-                    #TODO: catch ConnectError
-                    sqlConn.connect(start_executor = True)
-                sqlConn.status = connStatus.IDLE
-                # TODO check status of return
-                sqlConn.async_fetchdone()
-#                sqlConn.parent_chan.send(cmsg("fetchdone", None, None))
-#                sqlConn.parent_chan.recv()
+                    secho("Cancelling query...", err = True, fg = "red")
+                    sql_conn.cancel()
+                    secho("Query cancelled.", err = True, fg = "red")
+                sql_conn.status = connStatus.IDLE
+                sql_conn.close_cursor()
