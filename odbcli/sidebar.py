@@ -12,7 +12,7 @@ from prompt_toolkit.layout.controls import FormattedTextControl, BufferControl, 
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
-from prompt_toolkit.filters import is_done
+from prompt_toolkit.filters import is_done, renderer_height_is_known
 from prompt_toolkit.layout.margins import ScrollbarMargin
 from prompt_toolkit.mouse_events import MouseEvent
 from prompt_toolkit.lexers import Lexer
@@ -365,7 +365,7 @@ def show_sidebar_button_info(my_app: "sqlApp") -> Container:
             & Condition(
                 lambda: not my_app.show_exit_confirmation
             )
-#            & renderer_height_is_known
+            & renderer_height_is_known
             )
 
 def sql_sidebar(my_app: "sqlApp") -> Window:
