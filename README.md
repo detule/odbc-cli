@@ -85,11 +85,20 @@ that could be specific to your setup, contributing to the problem and making it 
 
 ## Troubleshooting
 
-### Connecting to databases
+### Listing connections and connecting to databases
 
 The best way to resolve connectivity issues is to work directly in a python console.  In particular, try working directly with the `cyanodbc` package in an interactive session.
 
-If for example, you are attempting to connect to a DSN called `postgresql_db` - recall this should be defined and configured in the INI configuration file appropriate to your driver manager, in the background, **odbc-cli** attempts to establish a connection with a connection string similar to:
+* When starting the client, **odbc-cli** queries the driver manager for a list of available connections by executing:
+
+```
+import cyanodbc
+cyanodbc.datasources()
+```
+
+Make sure this command returns a coherent output / agrees with your expectations before attempting anything else.  If it does not, consult the documentaion for your driver manager and make sure all the appropriate INI files are populated accordingly.
+
+* If for example, you are attempting to connect to a DSN called `postgresql_db` - recall this should be defined and configured in the INI configuration file appropriate to your driver manager, in the background, **odbc-cli** attempts to establish a connection with a connection string similar to:
 
 ```
 import cyanodbc
