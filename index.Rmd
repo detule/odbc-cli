@@ -135,7 +135,7 @@ This buffer sports both, an as-you-type auto-completion, as well as suggestions 
 
 ### Cancelling queries
 
-Outside of queries to support auto completion, all statements are executed in a separate process, "executor".  Whether in the main execution buffer, or in the table preview, you should be able to cancel a long-running query by pressing `[CTRL+c]`.  At that point, the client will attempt to close and re-start the "executor" process.
+Outside of queries to support auto completion, all statements are executed in a separate thread.  Whether in the main execution buffer, or in the table preview, this enables the user to gracefully cancel a long-running query by pressing `[CTRL+c]`.
 
 ### Configuring the client
 
