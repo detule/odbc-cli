@@ -101,7 +101,7 @@ class sqlConnection:
             res = sub("(_|%)", self.search_escapepattern, term)
         else:
             res = term
-        return term
+        return res
 
     def connect(
             self,
@@ -126,12 +126,13 @@ class sqlConnection:
                 raise ConnectError(e)
 
     def fetchmany(self, size, event: Event = None) -> list:
-        if self.cursor:
-            self._fetch_res = self.cursor.fetchmany(size)
-        else:
-            self._fetch_res = []
-        if event is not None:
-            event.set()
+        with self._lock:
+            if self.cursor:
+                self._fetch_res = self.cursor.fetchmany(size)
+            else:
+                self._fetch_res = []
+            if event is not None:
+                event.set()
         return self._fetch_res
 
     def async_fetchmany(self, size) -> list:
@@ -151,6 +152,7 @@ class sqlConnection:
         return self._fetch_res
 
     def execute(self, query, parameters = None, event: Event = None) -> Cursor:
+        self.logger.debug("Execute: %s", query)
         with self._lock:
             self.close_cursor()
             self.cursor = self.conn.cursor()
@@ -231,7 +233,8 @@ class sqlConnection:
 
         try:
             if self.conn.connected():
-                self.logger.debug("Calling find_tables...")
+                self.logger.debug("Calling find_tables: %s, %s, %s, %s",
+                        catalog, schema, table, type)
                 with self._lock:
                     res = self.conn.find_tables(
                         catalog = catalog,
@@ -254,7 +257,8 @@ class sqlConnection:
 
         try:
             if self.conn.connected():
-                self.logger.debug("Calling find_columns...")
+                self.logger.debug("Calling find_columns: %s, %s, %s, %s",
+                        catalog, schema, table, column)
                 with self._lock:
                     res = self.conn.find_columns(
                             catalog = catalog,
@@ -374,7 +378,7 @@ class MSSQL(sqlConnection):
 
         return super().list_schemas(catalog = catalog)
 
-    def mssql_preview_query(
+    def preview_query(
             self,
             table,
             filter_query = "",
@@ -480,7 +484,24 @@ class SQLite(sqlConnection):
         """Easy peasy"""
         return []
 
+class Snowflake(sqlConnection):
+
+    def find_tables(
+            self,
+            catalog = "",
+            schema = "",
+            table = "",
+            type = "") -> list:
+
+        type = type.upper()
+        return super().find_tables(
+                catalog = catalog,
+                schema = schema,
+                table = table,
+                type = type)
+
 connWrappers["MySQL"] = MySQL
 connWrappers["Microsoft SQL Server"] = MSSQL
 connWrappers["SQLite"] = SQLite
 connWrappers["PostgreSQL"] = PSSQL
+connWrappers["Snowflake"] = Snowflake

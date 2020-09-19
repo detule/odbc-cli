@@ -67,6 +67,12 @@ I have had a chance to test connectivity and basic functionality to the followin
   Driver notes:
   * Please consider using [psqlODBC 12.01](https://odbc.postgresql.org/docs/release.html) or newer for optimal performance (older versions, when used with a PostgreSQL 12.0, seem to have a documented bug when calling into SQLColumns).
 
+* **Snowflake**
+  I have had a chance to test connectivity and basic functionality, but contributor help very much appreciated.
+
+  Driver notes:
+  * As of version 2.20 of their ODBC driver, consider specifying the `Database` field in the DSN configuration section in your INI files.  If no `Database` is specified when connecting, their driver will report the empty string - despite being attached to a particlar catalog.  Subsequently, post-connection specifying the database using `USE` works as expected.
+
 * **Other** DMB Systems with ODBC drivers not mentioned above should work with minimal, or hopefully no additional, configuration / effort.
 
 ## Reporting issues
