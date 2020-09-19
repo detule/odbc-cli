@@ -57,6 +57,10 @@ vi = False
 # Number of lines to reserve for the suggestion menu
 min_num_menu_lines = 5
 
+# When previewing a table we SELECT *.  If preview_limit_rows is > 0
+# we attempt to limit the maximum number of rows fetched to this number.
+preview_limit_rows = 500
+
 # Custom colors for the completion menu, toolbar, etc.
 [colors]
 completion-menu.completion.current = 'bg:#ffffff #000000'

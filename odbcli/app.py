@@ -29,6 +29,7 @@ class sqlApp:
         c = self.config = get_config(odbclirc_file)
         self.initialize_logging()
         self.set_default_pager(c)
+        self.preview_limit_rows = c["main"].as_int("preview_limit_rows")
         self.pager_reserve_lines = c["main"].as_int("pager_reserve_lines")
         self.table_format = c["main"]["table_format"]
         self.timing_enabled = c["main"].as_bool("timing")
