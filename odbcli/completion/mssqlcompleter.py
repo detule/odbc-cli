@@ -209,9 +209,6 @@ class MssqlCompleter(Completer):
                 self.logger.error('%r %r listed in unrecognized schema %r',
                               kind, relname, schema)
 
-            # OG: Unclear what the roll of all_completions is
-            # self.all_completions.add(relname)
-
     def extend_columns(self, column_data, kind):
         """extend column metadata.
 
@@ -1041,8 +1038,9 @@ class MssqlCompleter(Completer):
                 #    addcols(schema, relname, tbl.alias, 'functions', cols)
             else:
                 conn = self.my_app.active_conn
+                # Per SQLColumns spec: CatalogName cannot contain a string search pattern
                 res = conn.find_columns(
-                        catalog = conn.sanitize_search_string(catalog_u),
+                        catalog = catalog_u,
                         schema = conn.sanitize_search_string(schema_u),
                         table = conn.sanitize_search_string(relname_u),
                         column = "%")
@@ -1095,7 +1093,9 @@ class MssqlCompleter(Completer):
 
         """
         ret = []
+        obj_names = []
         conn = self.my_app.active_conn
+        metadata = self.dbmetadata[obj_type]
         if catalog is None and schema is None:
             # Query free tables, no catalog or schema (think SQLite)
             # Trying to communicate here empty string, "" to
@@ -1104,6 +1104,11 @@ class MssqlCompleter(Completer):
             # as wildcards per ODBC standard.  So try to work around the
             # nanodbc intercept, and create an empty string as a
             # null-terminated string without content.
+            # TODO: find a way to cache / record in dbmetadata the reesults
+            # of this query since it's pretty expensive - gets called on every
+            # "FROM_".
+            self.logger.debug("populate_objects(%s): Calling find_tables with catalog/schema null",
+                    obj_type)
             res = conn.find_tables(
                     catalog = "\x00",
                     schema = "\x00",
@@ -1132,7 +1137,6 @@ class MssqlCompleter(Completer):
         catalog_e = self.escape_name(self.unescape_name(catalog))
         schema_e = self.escape_name(self.unescape_name(schema))
 
-        metadata = self.dbmetadata[obj_type]
         if catalog_e in metadata.keys() and \
                 schema_e in metadata[catalog_e].keys() and \
                 metadata[catalog_e][schema_e]:
@@ -1148,7 +1152,6 @@ class MssqlCompleter(Completer):
                 )
         else:
             self.logger.debug("populate_objects(%s): Did not find %s.%s metadata.  Will query.", obj_type, catalog_e, schema_e)
-            obj_names = []
             res = conn.find_tables(
                     catalog = conn.sanitize_search_string(
                         self.unescape_name(catalog)),
@@ -1170,9 +1173,7 @@ class MssqlCompleter(Completer):
             if catalog_e in metadata.keys() and \
                     schema_e in metadata[catalog_e].keys():
                 self.logger.debug("populate_objects(%s): Populating objects %s.%s", obj_type, catalog_e, schema_e)
-                metadata[catalog_e][schema_e].update(
-                        dict.fromkeys(obj_names, {})
-                )
+                metadata[catalog_e][schema_e].update(dict.fromkeys(obj_names, {}))
         return ret
 
     def populate_functions(self, schema, filter_func):
