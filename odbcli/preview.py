@@ -104,7 +104,8 @@ def preview_element(my_app: "sqlApp"):
             schema =  (sql_conn.quotechar + "%s" + sql_conn.quotechar) % schema
         name = (sql_conn.quotechar + "%s" + sql_conn.quotechar) % obj.name
         identifier = ".".join(list(filter(None, [catalog, schema, obj.name])))
-        query = sql_conn.preview_query(table = identifier, filter_query = buff.text)
+        query = sql_conn.preview_query(table = identifier, filter_query = buff.text,
+                limit = my_app.preview_limit_rows)
 
         func = partial(refresh_results,
                 window_height = output_field.window.render_info.window_height)
