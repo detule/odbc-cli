@@ -39,6 +39,7 @@ python -m pip install --index-url https://test.pypi.org/simple/ odbcli
 Notes:
 * In theory, this package should work under Windows, MacOS, as well as Linux.  I can only test Linux; help testing and developing on the other platforms (as well as Linux) is very much welcome.
 * The main supporting package, [**cyanodbc**](https://github.com/cyanodbc/cyanodbc) comes as a pre-compiled wheel.  It requires a modern C++ library supporting the C++14 standard.  The cyanodbc Linux wheel is built on Ubuntu 16 - not exactly bleeding edge.  Anything newer should be fine.
+  * As of https://github.com/detule/odbc-cli/commit/bea22885d0483de0c1899ebc26ff853568b0e417, **odbc-cli** requires `cyanodbc` version [0.0.2.136](https://test.pypi.org/project/Cyanodbc/0.0.2.136/#files) or newer.
 
 ## Usage
 
