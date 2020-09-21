@@ -11,7 +11,7 @@ output:
 
 *Please note: this package should be considered "alpha" - while you are more than welcome to use it, you should expect that getting it to work for you will require quite a bit of self-help on your part.  At the same time, it may be a great opportunity for those that want to contribute.*
 
-[**odbc-cli**](https://github.com/detule/odbcli) is an interactive command line query tool intended to work for DataBase Management Systems (DBMS) supported by ODBC drivers.
+[**odbc-cli**](https://github.com/detule/odbc-cli) is an interactive command line query tool intended to work for DataBase Management Systems (DBMS) supported by ODBC drivers.
 
 As is the case with the [remaining clients](https://github.com/dbcli/) derived from the [python prompt toolkit library](https://github.com/prompt-toolkit/python-prompt-toolkit), **odbc-cli** also supports a rich interactive command line experience, with features such as auto-completion, syntax-highlighting, multi-line queries, and query-history.
 
