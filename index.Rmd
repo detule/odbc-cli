@@ -123,7 +123,12 @@ Pressing the left arrow when a connection that is fully collapsed is highlighted
 
 Pressing the return key when a table or a view is highlighted in the object browser, brings up the preview window.  There are three elements in this window: the input/filtering buffer, the `Done` button, and the main output buffer.  Pressing the `tab` button will toggle the focus between these three elements.
 
-You can preview table contents - the equivalent of `SELECT *` - by simply pressing `return` while the cursor is in the filtering input buffer at the top of the preview window (equivalent to no filtering, and an unadulterated SELECT).  Repeatedly pressing the return key will page through the results.  In addition you can filter (or order) the output by entering a `WHERE ...` or similar qualifiers in the input buffer.  Tab-ing over to the `Done` button and pressing `return` will close the preview window.
+* You can preview table contents - the equivalent of `SELECT *` - by simply pressing `return` while the cursor is in the filtering input buffer at the top of the preview window (equivalent to no filtering, and an unadulterated SELECT).  Repeatedly pressing the return key will page through the results.
+* In addition you can filter (or order) the output by entering a `WHERE ...` or similar qualifiers in the input buffer.  The filtering box has two great features (also shared by the main query execution buffer):
+    * Suggestions from history: It will match any text you have typed in the filtering box to a most recent filtering you have previously entered **for the same table**.  You will appreciate this feature if you often come back to preview the same table and use the same filter.  At this time, only the most recent filter (matching the current input) is suggested, and there is no way to recall a longer history.
+    * Auto-completion: When typing "WHERE ", for example you should see a completion window offering up the columns of the table you are previewing.  Note: Connections are never cloned in **odbc-cli**; therefore if you are already paging through results (which, for the connection translates as being in the midst of a fetch operation), completion may not work as.  This is because in order to display a menu of columns, for example, I/O to the server may be needed, which in turn may be unavailable in the midst of a fetch.
+
+Tab-ing over to the `Done` button and pressing `return` will close the preview window (and cancel any pending fetch).
 
 ![odbc-cli tablepreview](https://github.com/detule/odbcli-screenshots/raw/master/odbcli-preview-new-slim.gif)
 
