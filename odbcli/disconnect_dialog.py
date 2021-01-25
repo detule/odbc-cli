@@ -12,6 +12,7 @@ def disconnect_dialog(my_app: "sqlApp"):
         # my_app.completer.reset_completions()
         obj = my_app.selected_object
         obj.conn.dbmetadata.reset_metadata()
+        obj.collapse()
         obj.conn.close()
         if my_app.active_conn is obj.conn:
             my_app.active_conn = None
