@@ -9,7 +9,8 @@ class DbMetadata():
     def extend_catalogs(self, names: list) -> None:
         with self._lock:
             for metadata in self._dbmetadata.values():
-                metadata.update(dict.fromkeys(names, {}))
+                for catalog in names:
+                    metadata[catalog] = {}
         return
 
     def get_catalogs(self, obj_type: str = "table") -> list:
@@ -34,7 +35,7 @@ class DbMetadata():
                 for metadata in self._dbmetadata.values():
                     metadata[catalog] = {}
                     for schema in names:
-                        metadata[catalog].update(dict.fromkeys(names, {}))
+                        metadata[catalog][schema] = {}
         return
 
     def get_schemas(self, catalog: str, obj_type: str = "table") -> list:
@@ -56,11 +57,13 @@ class DbMetadata():
         if len(names):
             with self._lock:
                 for metadata in self._dbmetadata.values():
+                    # Loop over tables, views, functions
                     if catalog not in metadata.keys():
                         metadata[catalog] = {}
                     if schema not in metadata[catalog].keys():
                         metadata[catalog][schema] = {}
-                self._dbmetadata[obj_type][catalog][schema].update(dict.fromkeys(names, {}))
+                for obj in names:
+                    self._dbmetadata[obj_type][catalog][schema][obj] = {}
         return
 
     def get_objects(self, catalog: str, schema: str, obj_type: str = "table") -> list:
