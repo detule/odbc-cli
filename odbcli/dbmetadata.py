@@ -64,6 +64,12 @@ class DbMetadata():
                         metadata[catalog][schema] = {}
                 for obj in names:
                     self._dbmetadata[obj_type][catalog][schema][obj] = {}
+        # If we passed nothing then take out that element entirely out
+        # of the dict
+        else:
+            with self._lock:
+                del self._dbmetadata[obj_type][catalog][schema]
+
         return
 
     def get_objects(self, catalog: str, schema: str, obj_type: str = "table") -> list:
