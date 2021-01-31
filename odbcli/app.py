@@ -29,6 +29,7 @@ class sqlApp:
         c = self.config = get_config(odbclirc_file)
         self.initialize_logging()
         self.set_default_pager(c)
+        self.mouse_support: bool = c["main"].as_bool("mouse_support")
         self.preview_limit_rows = c["main"].as_int("preview_limit_rows")
         self.pager_reserve_lines = c["main"].as_int("pager_reserve_lines")
         self.table_format = c["main"]["table_format"]
@@ -286,7 +287,7 @@ class sqlApp:
             enable_page_navigation_bindings = True,
             style = style_factory(self.syntax_style, self.cli_style),
             include_default_pygments_style = False,
-            mouse_support = True,
+            mouse_support = self.mouse_support,
             full_screen = False,
             editing_mode = EditingMode.VI if self.config["main"].as_bool("vi") else EditingMode.EMACS
         )
