@@ -172,6 +172,8 @@ class MssqlCompleter(Completer):
         self.casing = dict((word.lower(), word) for word in words)
 
     def extend_functions(self, func_data):
+        """ OG: Currently not used
+        """
 
         # func_data is a list of function metadata namedtuples
 
@@ -195,6 +197,8 @@ class MssqlCompleter(Completer):
         self._refresh_arg_list_cache()
 
     def _refresh_arg_list_cache(self):
+        """ OG: Currently not used
+        """
         # We keep a cache of {function_usage:{function_metadata: function_arg_list_string}}
         # This is used when suggesting functions, to avoid the latency that would result
         # if we'd recalculate the arg lists each time we suggest functions (in
@@ -212,6 +216,8 @@ class MssqlCompleter(Completer):
         }
 
     def extend_foreignkeys(self, fk_data):
+        """ OG: Currently not used
+        """
 
         # fk_data is a list of ForeignKey namedtuples, with fields
         # parentschema, childschema, parenttable, childtable,
@@ -237,6 +243,8 @@ class MssqlCompleter(Completer):
             parcolmeta.foreignkeys.append((fk))
 
     def extend_datatypes(self, type_data):
+        """ OG: Currently not used
+        """
 
         # dbmetadata['datatypes'][schema_name][type_name] should store type
         # metadata, such as composite type field names. Currently, we're not
@@ -576,7 +584,7 @@ class MssqlCompleter(Completer):
 
     def get_join_condition_matches(self, suggestion, word_before_cursor):
         col = namedtuple('col', 'schema tbl col')
-        tbls = self.populate_scoped_cols(suggestion.table_refs).items
+        tbls = self.populate_scoped_cols2(suggestion.table_refs).items
         cols = [(t, c) for t, cs in tbls() for c in cs]
         try:
             lref = (suggestion.parent or suggestion.table_refs[-1]).ref
@@ -630,8 +638,9 @@ class MssqlCompleter(Completer):
     # TODO: Need to account for suggestion.catalog
     def get_function_matches(
             self, suggestion, word_before_cursor, alias=False):
-
-        # OG: hack early exit, for now
+        """ OG: currently not used / hacked to exit early
+        """
+        # OG: hack early exit
         return []
         # We'll have to do away with this right? How can we possibly know this
         if suggestion.usage == 'from':
@@ -668,8 +677,6 @@ class MssqlCompleter(Completer):
 
     def get_schema_matches(self, suggestion, word_before_cursor):
         conn = self.active_conn
-        metadata = conn.dbmetadata.data
-        submeta = metadata['table']
         if suggestion.parent:
             catalog_u = self.unescape_name(suggestion.parent)
         else:
@@ -830,7 +837,6 @@ class MssqlCompleter(Completer):
 
     def get_database_matches(self, _, word_before_cursor):
         conn = self.active_conn
-        metadata = conn.dbmetadata.data
         catalogs_e = conn.dbmetadata.get_catalogs()
         if catalogs_e is None and (conn.connected()):
             catalogs_e = self.escape_names(conn.list_catalogs())
@@ -879,6 +885,8 @@ class MssqlCompleter(Completer):
         return self.find_matches(word_before_cursor, cmds, mode='strict')
 
     def get_datatype_matches(self, suggestion, word_before_cursor):
+        """ OG: Currently not used
+        """
         # suggest custom datatypes
         types = self.populate_schema_objects(suggestion.schema, 'datatypes')
         types = [self._make_cand(t, False, suggestion) for t in types]
@@ -909,7 +917,7 @@ class MssqlCompleter(Completer):
         Database: get_database_matches,
         Keyword: get_keyword_matches,
         Special: get_special_matches,
-        Datatype: get_datatype_matches,
+#        Datatype: get_datatype_matches,
 #        NamedQuery: get_namedquery_matches,
         Path: get_path_matches,
     }
@@ -1027,7 +1035,8 @@ class MssqlCompleter(Completer):
         return columns
 
     def _get_schemas(self, obj_typ, schema):
-        """Returns a list of schemas from which to suggest objects.
+        """ OG: Currently not used
+            Returns a list of schemas from which to suggest objects.
 
         :param schema is the schema qualification input by the user (if any)
 
@@ -1044,7 +1053,8 @@ class MssqlCompleter(Completer):
         return None if parent or schema in self.search_path else schema
 
     def populate_schema_objects(self, schema, obj_type):
-        """Returns a list of SchemaObjects representing tables or views.
+        """ OG: Currently not used
+            Returns a list of SchemaObjects representing tables or views.
 
         :param schema is the schema qualification input by the user (if any)
 
@@ -1070,8 +1080,6 @@ class MssqlCompleter(Completer):
         ret = []
         obj_names = []
         conn = self.active_conn
-        metadata = conn.dbmetadata.data
-        submeta = metadata[obj_type]
         self.logger.debug("populate_objects(%s): Called for %s.%s",
                 obj_type, catalog, schema)
         if catalog is None and schema is None:
@@ -1144,7 +1152,8 @@ class MssqlCompleter(Completer):
         return ret
 
     def populate_functions(self, schema, filter_func):
-        """Returns a list of function SchemaObjects.
+        """ OG: currently not used.
+            Returns a list of function SchemaObjects.
 
         :param filter_func is a function that accepts a FunctionMetadata
         namedtuple and returns a boolean indicating whether that
