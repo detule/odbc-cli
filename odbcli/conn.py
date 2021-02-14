@@ -483,7 +483,7 @@ class sqlConnection:
 
     def formatted_fetch(self, size, cols, format_name = "psql"):
         while True:
-            res = self.fetch_from_cache(size)
+            res = self.fetch_from_cache(size, wait = True)
             if len(res) < 1 and self.status != connStatus.FETCHING:
                 break
             if len(res) > 0:
