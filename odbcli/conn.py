@@ -66,6 +66,7 @@ class sqlConnection:
         # asynchronous fetch operation
         self._fetch_res: list = []
         self._fetch_thread = Thread()
+        self._execution_thread = Thread()
         self._cancel_async_event = Event()
 
         self._status = connStatus.DISCONNECTED
@@ -252,6 +253,7 @@ class sqlConnection:
         """ Signal fetching thread to terminate operation, then wait / block
             until thread terminates.  Also clear the fetch result cache.
             """
+        self.logger.debug("cancel_async_fetchall ...")
         self._cancel_async_event.set()
         if self._fetch_thread.is_alive():
             self._fetch_thread.join()
@@ -286,11 +288,11 @@ class sqlConnection:
             """
         self.close_cursor()
         exec_event = Event()
-        t = Thread(
+        self._execution_thread = Thread(
                 target = self.execute,
                 kwargs = {"query": query, "parameters": None, "event": exec_event},
                 daemon = True)
-        t.start()
+        self._execution_thread.start()
         # Will block but can be interrupted
         exec_event.wait()
         return self.cursor
@@ -299,6 +301,8 @@ class sqlConnection:
         # pyodbc note
         # return conn.cursor().tables(catalog = "%").fetchall()
         res = []
+        if self.status != connStatus.IDLE:
+            return res
         try:
             if self.conn.connected():
                 self.logger.debug("Calling list_catalogs...")
@@ -319,6 +323,8 @@ class sqlConnection:
         if catalog is not None and not catalog == self.current_catalog():
             return res
 
+        if self.status != connStatus.IDLE:
+            return res
         try:
             if self.conn.connected():
                 self.logger.debug("Calling list_schemas...")
@@ -339,6 +345,8 @@ class sqlConnection:
             type = "") -> list:
         res = []
 
+        if self.status != connStatus.IDLE:
+            return res
         try:
             if self.conn.connected():
                 self.logger.debug("Calling find_tables: %s, %s, %s, %s",
@@ -362,6 +370,8 @@ class sqlConnection:
             table = "",
             column = "") -> list:
         res = []
+        if self.status != connStatus.IDLE:
+            return res
 
         try:
             if self.conn.connected():
@@ -386,6 +396,9 @@ class sqlConnection:
             procedure = "") -> list:
         res = []
 
+        if self.status != connStatus.IDLE:
+            return res
+
         try:
             if self.conn.connected():
                 self.logger.debug("Calling find_procedures: %s, %s, %s",
@@ -408,6 +421,9 @@ class sqlConnection:
             procedure = "",
             column = "") -> list:
         res = []
+
+        if self.status != connStatus.IDLE:
+            return res
 
         try:
             if self.conn.connected():
@@ -443,6 +459,7 @@ class sqlConnection:
         return self.conn.get_info(code)
 
     def close(self) -> None:
+        self.logger.debug("close ...")
         # TODO: When disconnecting
         # We likely don't want to allow any exception to
         # propagate.  Catch DatabaseError?
@@ -450,17 +467,25 @@ class sqlConnection:
             self.conn.close()
 
     def close_cursor(self) -> None:
+        self.logger.debug("Close cursor ...")
         self.cancel_async_fetchall()
         if self.cursor:
-            self.cursor.close()
-            self.cursor = None
+            with self._lock:
+                self.cursor.close()
+                self.cursor = None
         self.query = None
         self.update_status(connStatus.IDLE)
 
     def cancel(self) -> None:
+        self.logger.debug("cancel ...")
         self.cancel_async_fetchall()
         if self.cursor:
+            # Should not hold _lock here.  Point here is to cancel execution
+            # that might be taking place in a separate thread where the execution
+            # lock is being held
             self.cursor.cancel()
+        if self._execution_thread.is_alive():
+            self._execution_thread.join()
         self.query = None
         self.update_status(connStatus.IDLE)
 
@@ -523,6 +548,9 @@ class MSSQL(sqlConnection):
         """ Optimization for listing out-of-database schemas by
             always querying catalog.sys.schemas. """
         res = []
+        if self.status != connStatus.IDLE:
+            return res
+
         qry = "SELECT name FROM {catalog}.sys.schemas " \
               "WHERE name NOT IN ('db_owner', 'db_accessadmin', " \
               "'db_securityadmin', 'db_ddladmin', 'db_backupoperator', " \
