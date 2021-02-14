@@ -58,7 +58,7 @@ def main():
                             cols = []
                         if len(cols):
                             ht = my_app.application.output.get_size()[0]
-                            sql_conn.async_fetchall(ht - 3 - my_app.pager_reserve_lines, my_app.application)
+                            sql_conn.async_fetchall(3 * (ht - 3 - my_app.pager_reserve_lines), my_app.application)
                             formatted = sql_conn.formatted_fetch(ht - 3 - my_app.pager_reserve_lines, cols, my_app.table_format)
                             echo_via_pager(formatted)
                         else:
