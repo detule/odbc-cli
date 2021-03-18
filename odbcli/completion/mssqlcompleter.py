@@ -887,21 +887,12 @@ class MssqlCompleter(Completer):
     def get_datatype_matches(self, suggestion, word_before_cursor):
         """ OG: Currently not used
         """
-        # suggest custom datatypes
-        types = self.populate_schema_objects(suggestion.schema, 'datatypes')
-        types = [self._make_cand(t, False, suggestion) for t in types]
-        matches = self.find_matches(word_before_cursor, types, meta='datatype')
+        return []
 
-        if not suggestion.schema:
-            # Also suggest hardcoded types
-            matches.extend(self.find_matches(word_before_cursor, self.datatypes,
-                                             mode='strict', meta='datatype'))
-
-        return matches
-
-#    def get_namedquery_matches(self, _, word_before_cursor):
-#        return self.find_matches(
-#            word_before_cursor, named_queries.list(), meta='named query')
+    def get_namedquery_matches(self, _, word_before_cursor):
+        """ OG: Currently not used
+        """
+        return []
 
     suggestion_matchers = {
         Blank: get_blank_item_matches,
@@ -917,8 +908,8 @@ class MssqlCompleter(Completer):
         Database: get_database_matches,
         Keyword: get_keyword_matches,
         Special: get_special_matches,
-#        Datatype: get_datatype_matches,
-#        NamedQuery: get_namedquery_matches,
+        Datatype: get_datatype_matches,
+        NamedQuery: get_namedquery_matches,
         Path: get_path_matches,
     }
 
