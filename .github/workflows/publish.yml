@@ -17,4 +17,4 @@ jobs:
       run: |
         python -m pip install --upgrade --upgrade-strategy eager . twine pytest
         pytest .
-        python -m build --sdist --wheel --outdir dist/
+        python setup.py sdist 
